@@ -245,7 +245,7 @@ const app = {
         }
         
         this.salvarSessao();
-    },
+    }
     
     // 📋 FUNÇÃO ATUALIZADA: renderOnlineUsersList CORRIGIDA
     renderOnlineUsersList() {
@@ -2691,3 +2691,4 @@ window.onload = () => {
     app.init();
 
 };
+
