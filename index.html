@@ -4,24 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ata Operacional Porter - 2026</title>
-    
-    <!-- METADADOS ADICIONAIS PARA SEO E PERFORMANCE -->
-    <meta name="description" content="Sistema de Registro de Ocorrências Porter - Ata Operacional 2026">
-    <meta name="author" content="Porter Condomínios">
-    <meta name="theme-color" content="#1a3a5f">
-    
-    <!-- ÍCONE -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
-    
-    <!-- FONT AWESOME -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- ESTILOS PRINCIPAIS -->
     <link rel="stylesheet" href="estilos.css">
-    
-    <!-- PRECONNECT PARA MELHOR PERFORMANCE -->
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="preconnect" href="https://www.gstatic.com">
 </head>
 <body>
 
@@ -29,7 +13,6 @@
 <section id="login-screen">
     <div class="login-container">
         <div class="login-logo">
-            <!-- LOGO DA PORTER ADICIONADO AQUI -->
             <div class="login-logo-img"></div>
             <h1>Ata Operacional Porter</h1>
             <p>Sistema de Registro de Ocorrências - 2026</p>
@@ -79,7 +62,6 @@
                 <i class="fas fa-bars"></i>
             </button>
             <div class="header-logo">
-                <!-- LOGO DA PORTER NO HEADER -->
                 <div class="logo-porter"></div>
                 <div class="header-logo-text">
                     <strong>ATA OPERACIONAL PORTER</strong>
@@ -514,7 +496,7 @@
 
             <div class="form-group">
                 <label><i class="fas fa-edit"></i> Mensagem</label>
-                                <textarea id="email-message" rows="8" placeholder="Descreva detalhadamente o assunto..." required></textarea>
+                <textarea id="email-message" rows="8" placeholder="Descreva detalhadamente o assunto..." required></textarea>
             </div>
 
             <!-- Informação sobre destinatários -->
@@ -636,131 +618,48 @@
   <div class="modal-content" style="max-width: 800px;">
     <div class="modal-header">
       <h3><i class="fas fa-comments"></i> Comentários</h3>
-      <button
-        class="modal-close"
-        onclick="app.closeCommentsModal()"
-      >
-        &times;
-      </button>
+      <button class="modal-close" onclick="app.closeCommentsModal()">&times;</button>
     </div>
     <div id="comments-modal-content"></div>
   </div>
 </div>
 
-<!-- Bibliotecas externas - ORDEM CORRETA É CRÍTICA -->
-<!-- 1. PDF e utilitários -->
+<!-- Bibliotecas externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<!-- 2. EmailJS (para sistema de e-mail) -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-<!-- 3. Firebase v8 (CRÍTICO - VERSÃO ESPECÍFICA) -->
+<!-- Firebase v8 (OBRIGATÓRIO) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-<!-- NOSSOS SCRIPTS - ORDEM CORRETA É CRÍTICA -->
-<!-- 4. Configuração do Firebase (PRIMEIRO) -->
+<!-- NOSSOS SCRIPTS - ORDEM SIMPLES E FUNCIONAL -->
 <script src="firebase.js"></script>
-
-<!-- 5. Sistema de Presença (SEGUNDO - depende do Firebase) -->
-<script src="presence.js"></script>
-
-<!-- 6. Dados do sistema (dados estáticos) -->
 <script src="data.js"></script>
-
-<!-- 7. Sistema de E-mail (depende de app.currentUser) -->
 <script src="email-app.js"></script>
-
-<!-- 8. App principal (ÚLTIMO - depende de todos acima) -->
 <script src="app.js"></script>
 
-<!-- SCRIPT DE INICIALIZAÇÃO SEGURA -->
+<!-- SCRIPT DE INICIALIZAÇÃO SIMPLES -->
 <script>
-    // Esperar DOM carregar completamente
+    // Esperar DOM carregar
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 DOM carregado - verificando dependências...');
-        
-        // Verificar dependências críticas
-        const dependencies = {
-            firebase: typeof firebase !== 'undefined',
-            db: typeof window.db !== 'undefined',
-            presenceManager: typeof presenceManager !== 'undefined',
-            DATA: typeof DATA !== 'undefined',
-            app: typeof app !== 'undefined',
-            emailApp: typeof emailApp !== 'undefined'
-        };
-        
-        console.log('📋 Dependências:', dependencies);
-        
-        // Verificar Firebase
-        if (!dependencies.firebase) {
-            console.error('❌ Firebase não carregado! Verifique CDN.');
-            alert('Aviso: Firebase não carregou. Algumas funcionalidades podem não funcionar.');
-        }
-        
-        if (!dependencies.db) {
-            console.warn('⚠️ window.db não disponível. Sistema pode operar em modo offline.');
-        }
-        
-        // Inicializar sistema de presença se disponível
-        if (dependencies.presenceManager && typeof presenceManager.init === 'function') {
-            try {
-                presenceManager.init();
-                console.log('✅ Sistema de presença inicializado');
-            } catch (error) {
-                console.error('❌ Erro ao inicializar sistema de presença:', error);
-            }
-        }
-        
-        // Inicializar sistema de e-mail se disponível
-        if (dependencies.emailApp && typeof emailApp.init === 'function') {
-            setTimeout(() => {
-                try {
-                    emailApp.init();
-                    console.log('✅ Sistema de e-mail inicializado');
-                } catch (error) {
-                    console.error('❌ Erro ao inicializar sistema de e-mail:', error);
-                }
-            }, 500);
-        }
+        console.log('🚀 Iniciando sistema Porter...');
         
         // Inicializar app principal
-        if (dependencies.app && typeof app.init === 'function') {
-            setTimeout(() => {
+        if (typeof app !== 'undefined' && typeof app.init === 'function') {
+            setTimeout(function() {
                 try {
                     app.init();
-                    console.log('✅ Sistema principal inicializado');
-                    
-                    // Verificar se há sessão ativa
-                    try {
-                        const session = localStorage.getItem('porter_session');
-                        if (session) {
-                            const userData = JSON.parse(session);
-                            if (userData && userData.user) {
-                                console.log('🔍 Sessão anterior encontrada:', userData.user);
-                                // Não restaurar automaticamente por segurança
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('⚠️ Erro ao verificar sessão:', e);
-                    }
+                    console.log('✅ Sistema inicializado com sucesso');
                 } catch (error) {
-                    console.error('❌ Erro fatal ao inicializar app:', error);
-                    alert('Erro crítico ao inicializar sistema. Recarregue a página.');
+                    console.error('❌ Erro ao inicializar app:', error);
+                    alert('Erro ao carregar o sistema. Recarregue a página.');
                 }
             }, 100);
         } else {
-            console.error('❌ App principal não disponível!');
-            alert('Erro: Sistema não carregou corretamente. Recarregue a página.');
+            console.error('❌ App não encontrado!');
+            alert('Sistema não carregou corretamente.');
         }
-        
-        // Monitorar erros não tratados
-        window.addEventListener('error', function(e) {
-            console.error('⚠️ Erro não tratado:', e.error);
-        });
-        
-        console.log('🎉 Sistema pronto para uso!');
     });
 </script>
 
