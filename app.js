@@ -71,6 +71,18 @@ const app = {
                 emailApp.init();
             }
         }, 500);
+
+        // Configurar botão online para abrir modal completo
+        const onlineBtn = document.getElementById('online-users');
+        if (onlineBtn) {
+            onlineBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.presenceManager) {
+                    window.presenceManager.openOnlineModal();
+                }
+            });
+        }
     },
 
     setupEventListeners() {
@@ -99,18 +111,17 @@ const app = {
                 this.registrarLogoff();
                 // 🔥 IMPORTANTE: Atualizar status no Firebase
                 if (typeof presenceManager !== 'undefined') {
-                    presenceManager.updateUserStatus('offline');
+                    presenceManager.logout();
                 }
             }
         });
 
-        // Operadores online
-        const onlineUsersEl = document.getElementById('online-users');
-        if (onlineUsersEl) {
-            onlineUsersEl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleOnlineUsers();
-            });
+        // Adicionar listener para atualizações de usuários online
+        if (typeof presenceManager !== 'undefined') {
+            presenceManager.onUsersUpdate = (users) => {
+                this.onlineUsers = users;
+                this.updateOnlineUI();
+            };
         }
     },
 
@@ -139,217 +150,40 @@ const app = {
     },
 
     setupOnlineTracking() {
-        // 🔥 IMPORTANTE: NÃO usar localStorage para online/offline
-        // A presença real é gerenciada pelo presence.js via Firebase
-        
-        // Configurar listener para atualizações do Firebase
-        if (typeof presenceManager !== 'undefined') {
-            // Quando o status dos usuários mudar no Firebase, atualizar a interface
-            presenceManager.onUsersUpdate((users) => {
-                this.onlineUsers = users;
-                this.updateOnlineUI();
-            });
-        }
-
-        // Iniciar presença do usuário atual no Firebase
         if (this.currentUser && typeof presenceManager !== 'undefined') {
-            presenceManager.setUserOnline(this.currentUser);
+            // Iniciar intervalo para atualizar usuários online
+            this.onlineInterval = setInterval(() => {
+                this.updateOnlineUsers();
+            }, 5000);
+            
+            // Atualizar UI inicialmente
+            this.updateOnlineUI();
         }
     },
 
-    // 🔥 FUNÇÃO ATUALIZADA: updateOnlineUsers - AGORA USA FIREBASE
     updateOnlineUsers() {
         if (!this.currentUser) return;
 
-        // 🔥 IMPORTANTE: Pegar usuários online do Firebase via presenceManager
         if (typeof presenceManager !== 'undefined') {
             this.onlineUsers = presenceManager.getOnlineUsers();
             this.updateOnlineUI();
-        } else {
-            console.warn('presenceManager não está disponível');
-            // Fallback temporário
-            this.updateOnlineUI();
         }
     },
 
-    // 🔥 NOVA FUNÇÃO: updateOnlineUI - Atualiza apenas a interface
     updateOnlineUI() {
-        // Atualizar contador
+        // Atualizar contador no header
         const onlineCount = document.getElementById('online-count');
         if (onlineCount) {
-            if (this.onlineUsers.length === 1) {
+            const totalOnline = this.onlineUsers.length;
+            if (totalOnline === 1) {
+                // Apenas o usuário atual online
                 onlineCount.textContent = '1 (apenas você)';
                 onlineCount.style.color = '#f39c12';
             } else {
-                onlineCount.textContent = this.onlineUsers.length;
+                onlineCount.textContent = totalOnline;
                 onlineCount.style.color = '#2ecc71';
             }
         }
-
-        // Se a lista estiver visível, atualizar
-        const onlineList = document.getElementById('online-users-list');
-        if (onlineList && onlineList.style.display === 'block') {
-            this.renderOnlineUsersList();
-        }
-    },
-
-    // 🔥 FUNÇÃO ATUALIZADA: renderOnlineUsersList - Usa dados do Firebase
-    renderOnlineUsersList() {
-        const list = document.getElementById('online-users-list');
-        if (!list) return;
-
-        // Limpar lista anterior
-        list.innerHTML = '';
-
-        if (this.onlineUsers.length === 0) {
-            list.innerHTML = `
-                <div style="padding: 2rem; text-align: center; color: #666;">
-                    <i class="fas fa-user-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>Nenhum operador online</p>
-                    <small style="font-size: 0.8rem;">Você está conectado, mas não há outros operadores ativos.</small>
-                </div>
-            `;
-            return;
-        }
-
-        // Ordenar: admin primeiro, depois por nome
-        const usuariosOrdenados = [...this.onlineUsers].sort((a, b) => {
-            if (a.role === 'ADMIN' && b.role !== 'ADMIN') return -1;
-            if (b.role === 'ADMIN' && a.role !== 'ADMIN') return 1;
-            if (a.userId === this.currentUser?.user && b.userId !== this.currentUser?.user) return -1;
-            if (b.userId === this.currentUser?.user && a.userId !== this.currentUser?.user) return 1;
-            return a.name.localeCompare(b.name);
-        });
-
-        usuariosOrdenados.forEach(user => {
-            const userItem = document.createElement('div');
-            userItem.className = 'online-user-item';
-
-            // Calcular tempo desde última atividade
-            const tempoAtivo = user.lastSeen ? 
-                this.formatarTempoAtivo(new Date(user.lastSeen)) : 
-                'Agora mesmo';
-
-            // Definir cor do status baseado no humor
-            const statusColor = this.getCorPorMood(user.mood || '😐');
-
-            // Verificar se é o usuário atual
-            const isCurrentUser = user.userId === this.currentUser?.user;
-
-            userItem.innerHTML = `
-                <div class="online-user-avatar" style="background: ${statusColor}; color: ${user.mood === '😐' ? '#333' : 'white'};">
-                    ${user.mood || '😐'}
-                </div>
-                <div class="online-user-info">
-                    <div class="online-user-name">
-                        ${user.name.split(' ')[0]}
-                        ${user.role === 'ADMIN' ? ' 👑' : ''}
-                        ${isCurrentUser ? '<span style="color: #3498db; font-size: 0.8rem;"> (Você)</span>' : ''}
-                    </div>
-                    <div class="online-user-role">
-                        ${user.status || 'Online'}
-                        <div style="font-size: 0.7rem; color: #888; margin-top: 2px;">
-                            <i class="far fa-clock"></i> ${tempoAtivo}
-                        </div>
-                    </div>
-                </div>
-                <div class="online-status" style="background: ${isCurrentUser ? '#3498db' : '#2ecc71'};"></div>
-            `;
-
-            list.appendChild(userItem);
-        });
-
-        // Adicionar rodapé
-        const rodape = document.createElement('div');
-        rodape.style.cssText = `
-            padding: 10px 15px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #666;
-            border-top: 1px solid #eee;
-            background: #f8f9fa;
-            border-radius: 0 0 10px 10px;
-        `;
-        rodape.innerHTML = `
-            <i class="fas fa-users"></i> 
-            ${this.onlineUsers.length} operador${this.onlineUsers.length > 1 ? 'es' : ''} online
-            <br>
-            <small style="font-size: 0.7rem; color: #999;">
-                Atualizado: ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-            </small>
-        `;
-
-        list.appendChild(rodape);
-    },
-
-    // 🔥 FUNÇÃO ATUALIZADA: toggleOnlineUsers - Sincronizada com Firebase
-    toggleOnlineUsers() {
-        const list = document.getElementById('online-users-list');
-        if (!list) return;
-
-        const estaVisivel = list.style.display === 'block';
-
-        // Fechar notificações se estiverem abertas
-        document.getElementById('notifications-panel').classList.remove('show');
-
-        if (estaVisivel) {
-            list.style.display = 'none';
-        } else {
-            // Atualizar lista ANTES de mostrar (do Firebase)
-            this.updateOnlineUsers();
-
-            // Posicionar corretamente
-            const dropdown = document.getElementById('online-users');
-            if (dropdown) {
-                const rect = dropdown.getBoundingClientRect();
-                list.style.top = `${rect.bottom + 5}px`;
-                list.style.right = '10px';
-                list.style.left = 'auto';
-                list.style.width = '300px';
-            }
-
-            list.style.display = 'block';
-            list.style.zIndex = '10000';
-
-            // Garantir que o conteúdo será renderizado
-            this.renderOnlineUsersList();
-        }
-    },
-
-    getMoodStatusTexto(mood) {
-        const statusMap = {
-            '😠': 'Zangado hoje',
-            '😔': 'Triste hoje', 
-            '😐': 'Neutro hoje',
-            '🙂': 'Feliz hoje',
-            '😄': 'Radiante hoje'
-        };
-        return statusMap[mood] || 'Não avaliado';
-    },
-
-    formatarTempoAtivo(dataAtividade) {
-        const agora = new Date();
-        const diferenca = agora - new Date(dataAtividade);
-        const minutos = Math.floor(diferenca / (1000 * 60));
-
-        if (minutos < 1) return 'Agora mesmo';
-        if (minutos === 1) return 'Há 1 minuto';
-        if (minutos < 60) return `Há ${minutos} minutos`;
-
-        const horas = Math.floor(minutos / 60);
-        if (horas === 1) return 'Há 1 hora';
-        return `Há ${horas} horas`;
-    },
-
-    getCorPorMood(mood) {
-        const cores = {
-            '😠': '#ffeaa7',
-            '😔': '#fd79a8', 
-            '😐': '#dfe6e9',
-            '🙂': '#a29bfe',
-            '😄': '#55efc4'
-        };
-        return cores[mood] || '#e8f4fc';
     },
 
     toggleSidebar() {
@@ -379,11 +213,6 @@ const app = {
 
         this.lastLogoffTime = new Date().toISOString();
         localStorage.setItem('porter_last_logoff', this.lastLogoffTime);
-
-        // 🔥 IMPORTANTE: Atualizar status no Firebase
-        if (typeof presenceManager !== 'undefined') {
-            presenceManager.updateUserStatus('offline');
-        }
 
         // Limpar intervalos
         if (this.chatInterval) {
@@ -417,11 +246,6 @@ const app = {
         };
 
         localStorage.setItem('porter_last_session', JSON.stringify(sessionData));
-
-        // 🔥 IMPORTANTE: Atualizar status no Firebase (mantém online)
-        if (typeof presenceManager !== 'undefined') {
-            presenceManager.updateUserActivity();
-        }
     },
 
     loadCondos() {
@@ -464,6 +288,195 @@ const app = {
                 }
             });
         });
+    },
+
+    // 🔥 FUNÇÃO LOGIN ATUALIZADA - Com integração do Firebase
+    login() {
+        const u = document.getElementById('login-user')?.value.trim();
+        const p = document.getElementById('login-pass')?.value;
+        const t = document.getElementById('login-turno')?.value;
+
+        if (!u || !p || !t) {
+            alert('Preencha todos os campos!');
+            return;
+        }
+
+        const user = DATA.funcionarios.find(f => f.user === u && f.pass === p);
+
+        if (user) {
+            this.currentUser = { 
+                ...user, 
+                turno: t, 
+                loginTime: new Date().toLocaleString('pt-BR'),
+                loginTimestamp: new Date().toISOString(),
+                loginDate: new Date().toLocaleDateString('pt-BR'),
+                loginHour: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})
+            };
+            localStorage.setItem('porter_session', JSON.stringify(this.currentUser));
+
+            // Registrar login
+            let presencas = JSON.parse(localStorage.getItem('porter_presencas') || '[]');
+            presencas.unshift({
+                nome: user.nome,
+                turno: t,
+                data: new Date().toLocaleDateString('pt-BR'),
+                hora: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}),
+                timestamp: new Date().toISOString(),
+                dataISO: new Date().toISOString().split('T')[0],
+                tipo: 'login'
+            });
+
+            if (presencas.length > 100) presencas = presencas.slice(0, 100);
+            localStorage.setItem('porter_presencas', JSON.stringify(presencas));
+
+            // 🔥 INTEGRAÇÃO COM FIREBASE - CHAMADA DO PRESENCE MANAGER
+            if (window.presenceManager) {
+                const userName = this.currentUser.nome;
+                const userEmail = this.currentUser.user + '@porter.com';
+                const turno = this.currentUser.turno;
+                
+                window.presenceManager.initUser(userName, userEmail, turno);
+            }
+
+            this.showApp();
+        } else {
+            alert('Credenciais inválidas! Verifique usuário e senha.');
+        }
+    },
+
+    showApp() {
+        // Transição suave
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-content').classList.remove('hidden');
+
+        // MOSTRAR SIDEBAR APÓS LOGIN
+        if (window.innerWidth > 1200) {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.style.display = 'block';
+            }
+        }
+
+        this.updateUserInfo();
+
+        this.carregarMoodOptions();
+        const jaAvaliou = this.jaAvaliouHoje();
+        const moodContainer = document.getElementById('mood-check-container');
+        if (moodContainer) {
+            if (!jaAvaliou) {
+                moodContainer.classList.remove('hidden');
+            } else {
+                moodContainer.classList.add('hidden');
+            }
+        }
+
+        this.renderAll();
+        this.updateNotificationBadges();
+        this.salvarSessao();
+
+        // 🔥 ATUALIZAR OPERADORES ONLINE VIA FIREBASE
+        this.setupOnlineTracking();
+        this.updateOnlineUsers();
+
+        // Se for admin, mostrar controles
+        const adminControls = document.getElementById('admin-controls');
+        if (adminControls && this.currentUser.role === 'ADMIN') {
+            adminControls.style.display = 'flex';
+        }
+
+        // Iniciar chat
+        this.loadChat();
+        this.chatInterval = setInterval(() => this.loadChat(), 5000);
+
+        // Inicializar visto por
+        this.registrarVisualizacaoChat();
+    },
+
+    updateUserInfo() {
+        const userInfo = document.getElementById('user-info');
+        if (userInfo && this.currentUser) {
+            const moodAtual = this.getMoodAtual();
+            userInfo.innerHTML = `
+                <div class="user-info-name">
+                    <span style="font-size: 1.2rem; margin-right: 5px;">${moodAtual}</span>
+                    <strong>${this.currentUser.nome.split(' ')[0]}</strong>
+                </div>
+                <div class="user-info-time">
+                    <i class="far fa-calendar"></i> ${this.currentUser.loginDate}
+                    <i class="far fa-clock"></i> ${this.currentUser.loginHour}
+                </div>
+                <div class="user-info-role">
+                    ${this.currentUser.turno} | ${this.currentUser.role}
+                </div>
+            `;
+        }
+    },
+
+    // 🔥 FUNÇÃO LOGOUT ATUALIZADA - Com integração do Firebase
+    logout() {
+        if (confirm('Deseja realmente sair do sistema?')) {
+            // 🔥 REMOVER DO FIREBASE PRIMEIRO
+            if (window.presenceManager) {
+                window.presenceManager.logout();
+            }
+
+            this.registrarLogoff();
+
+            // Limpar intervalos
+            if (this.chatInterval) {
+                clearInterval(this.chatInterval);
+                this.chatInterval = null;
+            }
+
+            if (this.moodInterval) {
+                clearInterval(this.moodInterval);
+                this.moodInterval = null;
+            }
+
+            if (this.onlineInterval) {
+                clearInterval(this.onlineInterval);
+                this.onlineInterval = null;
+            }
+
+            // Limpar sessão
+            localStorage.removeItem('porter_session');
+            localStorage.removeItem('porter_last_session');
+
+            this.currentUser = null;
+
+            // Esconder aplicação
+            document.getElementById('main-content').classList.add('hidden');
+
+            // Mostrar login com transição suave
+            document.getElementById('login-screen').classList.remove('hidden');
+
+            // Resetar formulário de login
+            document.getElementById('login-user').value = '';
+            document.getElementById('login-pass').value = '';
+
+            this.showMessage('Logoff realizado com sucesso!', 'success');
+        }
+    },
+
+    // Restante das funções permanecem EXATAMENTE como estavam
+    // ... (todas as outras funções continuam iguais)
+
+    getMoodAtual() {
+        if (!this.currentUser) return '😐';
+
+        const hojeISO = new Date().toISOString().split('T')[0];
+        const moods = JSON.parse(localStorage.getItem('porter_moods') || '[]');
+        const moodHoje = moods.find(m => m.user === this.currentUser.user && m.dataISO === hojeISO);
+
+        return moodHoje ? moodHoje.moodStatus.split(' ')[0] : '😐';
+    },
+
+    jaAvaliouHoje() {
+        if (!this.currentUser) return true;
+
+        const hojeISO = new Date().toISOString().split('T')[0];
+        const moods = JSON.parse(localStorage.getItem('porter_moods') || '[]');
+        return moods.some(m => m.user === this.currentUser.user && m.dataISO === hojeISO);
     },
 
     loadFiltros() {
@@ -597,12 +610,6 @@ const app = {
             submitBtn.disabled = true;
         }
 
-        // Atualizar lista de online (mood mudou)
-        this.updateOnlineUsers();
-
-        // Atualizar a área do usuário
-        this.updateUserInfo();
-
         setTimeout(() => {
             if (resultDiv) {
                 resultDiv.classList.add('hidden');
@@ -628,16 +635,6 @@ const app = {
         }
     },
 
-    getMoodAtual() {
-        if (!this.currentUser) return '😐';
-
-        const hojeISO = new Date().toISOString().split('T')[0];
-        const moods = JSON.parse(localStorage.getItem('porter_moods') || '[]');
-        const moodHoje = moods.find(m => m.user === this.currentUser.user && m.dataISO === hojeISO);
-
-        return moodHoje ? moodHoje.moodStatus.split(' ')[0] : '😐';
-    },
-
     updateCity() {
         const condoName = document.getElementById('ata-condo');
         const cidade = document.getElementById('ata-cidade');
@@ -654,166 +651,6 @@ const app = {
 
         const condo = DATA.condominios.find(c => c.n === condoName.value);
         cidade.value = condo ? condo.c : "";
-    },
-
-    login() {
-        const u = document.getElementById('login-user')?.value.trim();
-        const p = document.getElementById('login-pass')?.value;
-        const t = document.getElementById('login-turno')?.value;
-
-        if (!u || !p || !t) {
-            alert('Preencha todos os campos!');
-            return;
-        }
-
-        const user = DATA.funcionarios.find(f => f.user === u && f.pass === p);
-
-        if (user) {
-            this.currentUser = { 
-                ...user, 
-                turno: t, 
-                loginTime: new Date().toLocaleString('pt-BR'),
-                loginTimestamp: new Date().toISOString(),
-                loginDate: new Date().toLocaleDateString('pt-BR'),
-                loginHour: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})
-            };
-            localStorage.setItem('porter_session', JSON.stringify(this.currentUser));
-
-            // Registrar login
-            let presencas = JSON.parse(localStorage.getItem('porter_presencas') || '[]');
-            presencas.unshift({
-                nome: user.nome,
-                turno: t,
-                data: new Date().toLocaleDateString('pt-BR'),
-                hora: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}),
-                timestamp: new Date().toISOString(),
-                dataISO: new Date().toISOString().split('T')[0],
-                tipo: 'login'
-            });
-
-            if (presencas.length > 100) presencas = presencas.slice(0, 100);
-            localStorage.setItem('porter_presencas', JSON.stringify(presencas));
-
-            this.showApp();
-        } else {
-            alert('Credenciais inválidas! Verifique usuário e senha.');
-        }
-    },
-
-    showApp() {
-        // Transição suave
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-content').classList.remove('hidden');
-
-        // MOSTRAR SIDEBAR APÓS LOGIN
-        if (window.innerWidth > 1200) {
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) {
-                sidebar.style.display = 'block';
-            }
-        }
-
-        this.updateUserInfo();
-
-        this.carregarMoodOptions();
-        const jaAvaliou = this.jaAvaliouHoje();
-        const moodContainer = document.getElementById('mood-check-container');
-        if (moodContainer) {
-            if (!jaAvaliou) {
-                moodContainer.classList.remove('hidden');
-            } else {
-                moodContainer.classList.add('hidden');
-            }
-        }
-
-        this.renderAll();
-        this.updateNotificationBadges();
-        this.salvarSessao();
-
-        // 🔥 ATUALIZAR OPERADORES ONLINE VIA FIREBASE
-        this.setupOnlineTracking();
-        this.updateOnlineUsers();
-
-        // Se for admin, mostrar controles
-        const adminControls = document.getElementById('admin-controls');
-        if (adminControls && this.currentUser.role === 'ADMIN') {
-            adminControls.style.display = 'flex';
-        }
-
-        // Iniciar chat
-        this.loadChat();
-        this.chatInterval = setInterval(() => this.loadChat(), 5000);
-
-        // 🆕 Inicializar visto por
-        this.registrarVisualizacaoChat();
-    },
-
-    updateUserInfo() {
-        const userInfo = document.getElementById('user-info');
-        if (userInfo && this.currentUser) {
-            const moodAtual = this.getMoodAtual();
-            userInfo.innerHTML = `
-                <div class="user-info-name">
-                    <span style="font-size: 1.2rem; margin-right: 5px;">${moodAtual}</span>
-                    <strong>${this.currentUser.nome.split(' ')[0]}</strong>
-                </div>
-                <div class="user-info-time">
-                    <i class="far fa-calendar"></i> ${this.currentUser.loginDate}
-                    <i class="far fa-clock"></i> ${this.currentUser.loginHour}
-                </div>
-                <div class="user-info-role">
-                    ${this.currentUser.turno} | ${this.currentUser.role}
-                </div>
-            `;
-        }
-    },
-
-    jaAvaliouHoje() {
-        if (!this.currentUser) return true;
-
-        const hojeISO = new Date().toISOString().split('T')[0];
-        const moods = JSON.parse(localStorage.getItem('porter_moods') || '[]');
-        return moods.some(m => m.user === this.currentUser.user && m.dataISO === hojeISO);
-    },
-
-    logout() {
-        if (confirm('Deseja realmente sair do sistema?')) {
-            this.registrarLogoff();
-
-            // Limpar intervalos
-            if (this.chatInterval) {
-                clearInterval(this.chatInterval);
-                this.chatInterval = null;
-            }
-
-            if (this.moodInterval) {
-                clearInterval(this.moodInterval);
-                this.moodInterval = null;
-            }
-
-            if (this.onlineInterval) {
-                clearInterval(this.onlineInterval);
-                this.onlineInterval = null;
-            }
-
-            // Limpar sessão
-            localStorage.removeItem('porter_session');
-            localStorage.removeItem('porter_last_session');
-
-            this.currentUser = null;
-
-            // Esconder aplicação
-            document.getElementById('main-content').classList.add('hidden');
-
-            // Mostrar login com transição suave
-            document.getElementById('login-screen').classList.remove('hidden');
-
-            // Resetar formulário de login
-            document.getElementById('login-user').value = '';
-            document.getElementById('login-pass').value = '';
-
-            this.showMessage('Logoff realizado com sucesso!', 'success');
-        }
     },
 
     switchTab(tabId, btn) {
@@ -842,7 +679,7 @@ const app = {
         if (tabFixas) tabFixas.textContent = fixas.length;
         if (tabOs) tabOs.textContent = os.length;
 
-        // 🆕 Usar função atualizarBadgeChat
+        // Usar função atualizarBadgeChat
         this.atualizarBadgeChat();
     },
 
