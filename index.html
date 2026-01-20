@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ata Operacional Porter - 2026</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- MANTENHA SEU CSS ORIGINAL -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<!-- ========== TELA DE LOGIN (INTACTA) ========== -->
+<!-- TELA DE LOGIN -->
 <section id="login-screen">
     <div class="login-container">
         <div class="login-logo">
+            <!-- LOGO DA PORTER ADICIONADO AQUI -->
             <div class="login-logo-img"></div>
             <h1>Ata Operacional Porter</h1>
             <p>Sistema de Registro de Ocorrências - 2026</p>
@@ -42,7 +42,7 @@
     </div>
 </section>
 
-<!-- ========== SIDEBAR (INTACTA) ========== -->
+<!-- SIDEBAR COM LISTA DE CONDOMÍNIOS -->
 <div id="sidebar">
     <div class="sidebar-header">
         <h3><i class="fas fa-building"></i> CONDOMÍNIOS</h3>
@@ -55,7 +55,7 @@
     </div>
 </div>
 
-<!-- ========== CONTEÚDO PRINCIPAL (TUDO INTACTO) ========== -->
+<!-- CONTEÚDO PRINCIPAL -->
 <div id="main-content" class="hidden">
     <header>
         <div class="header-left">
@@ -63,6 +63,7 @@
                 <i class="fas fa-bars"></i>
             </button>
             <div class="header-logo">
+                <!-- LOGO DA PORTER NO HEADER -->
                 <div class="logo-porter"></div>
                 <div class="header-logo-text">
                     <strong>ATA OPERACIONAL PORTER</strong>
@@ -78,7 +79,7 @@
 
         <div style="display: flex; align-items: center; gap: 15px;">
             <!-- OPERADORES ONLINE -->
-            <div id="online-users" class="online-users-dropdown" onclick="presenceManager.openOnlineModal()">
+            <div id="online-users" class="online-users-dropdown">
                 <i class="fas fa-users" style="color: white;"></i>
                 <span style="font-size: 0.9rem;">
                     <span id="online-count">0</span> online
@@ -101,7 +102,7 @@
             </div>
 
             <!-- Botão Contato E-mail -->
-            <button id="email-button" class="btn btn-success" onclick="emailApp.openEmailModal()">
+            <button id="email-button" class="btn btn-success">
                 <i class="fas fa-envelope"></i> Contato
             </button>
 
@@ -472,7 +473,7 @@
     </div>
 </div>
 
-<!-- ========== MODAIS (INTACTOS) ========== -->
+<!-- MODAL DE E-MAIL -->
 <div class="modal" id="email-modal">
     <div class="modal-content email-modal-content">
         <div class="modal-header">
@@ -600,72 +601,39 @@
         <i class="fas fa-user-shield"></i>
         Controle Administrativo
       </h3>
-      <button class="modal-close" onclick="app.closeAdminModal()">&times;</button>
+      <button
+        class="modal-close"
+        onclick="app.closeAdminModal()"
+      >
+        &times;
+      </button>
     </div>
-    <div id="admin-modal-content"></div>
+
+    <div id="admin-modal-content">
+      <!-- Conteúdo será carregado dinamicamente -->
+    </div>
   </div>
 </div>
 
-<!-- MODAL DE COMENTÁRIOS (ADICIONADO PARA APP.JS FUNCIONAR) -->
-<div class="modal" id="comments-modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3><i class="fas fa-comments"></i> Comentários</h3>
-      <button class="modal-close" onclick="app.closeCommentsModal()">&times;</button>
-    </div>
-    <div id="comments-modal-content"></div>
-  </div>
-</div>
-
-<!-- MODAL DE USUÁRIOS ONLINE (NOVO - ADICIONADO APENAS ISSO) -->
-<div class="modal" id="online-users-modal">
-    <div class="modal-content">
-        <div class="online-users-modal-header">
-            <h3><i class="fas fa-users"></i> Operadores Online</h3>
-            <div class="online-users-stats">
-                <div class="stat-item">
-                    <span class="stat-value" id="online-total">0</span>
-                    <span class="stat-label">Total</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="online-diurno">0</span>
-                    <span class="stat-label">Diurno</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="online-noturno">0</span>
-                    <span class="stat-label">Noturno</span>
-                </div>
-            </div>
-        </div>
-        <div id="online-users-full-list" class="online-user-grid">
-            <!-- Lista completa será gerada aqui -->
-        </div>
-        <div class="modal-footer" style="margin-top: 20px; text-align: center;">
-            <button class="btn btn-primary" onclick="presenceManager.showFullList()">
-                <i class="fas fa-sync-alt"></i> Atualizar Lista
-            </button>
-            <button class="btn btn-clear" onclick="app.closeModal('online-users-modal')">
-                Fechar
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ========== SCRIPTS (ORDEM CORRETA) ========== -->
+<!-- Bibliotecas externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-<!-- Firebase v8 -->
+<!-- Firebase v8 (OBRIGATÓRIO) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-<!-- Seus scripts -->
+<!-- Inicialização Firebase -->
+<!-- Firebase -->
 <script src="firebase.js"></script>
+
+<!-- Presença online/offline -->
 <script src="presence.js"></script>
+
+<!-- Seus scripts -->
 <script src="data.js"></script>
 <script src="email-app.js"></script>
 <script src="app.js"></script>
 
 </body>
-</html>
