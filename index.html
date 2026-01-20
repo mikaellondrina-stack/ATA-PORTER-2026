@@ -13,6 +13,7 @@
 <section id="login-screen">
     <div class="login-container">
         <div class="login-logo">
+            <!-- LOGO DA PORTER ADICIONADO AQUI -->
             <div class="login-logo-img"></div>
             <h1>Ata Operacional Porter</h1>
             <p>Sistema de Registro de Ocorrências - 2026</p>
@@ -62,6 +63,7 @@
                 <i class="fas fa-bars"></i>
             </button>
             <div class="header-logo">
+                <!-- LOGO DA PORTER NO HEADER -->
                 <div class="logo-porter"></div>
                 <div class="header-logo-text">
                     <strong>ATA OPERACIONAL PORTER</strong>
@@ -613,7 +615,7 @@
   </div>
 </div>
 
-<!-- MODAL DE COMENTÁRIOS -->
+<!-- MODAL DE COMENTÁRIOS (ADICIONADO - NECESSÁRIO PARA app.js) -->
 <div class="modal" id="comments-modal">
   <div class="modal-content" style="max-width: 800px;">
     <div class="modal-header">
@@ -633,35 +635,11 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-<!-- NOSSOS SCRIPTS - ORDEM SIMPLES E FUNCIONAL -->
+<!-- NOSSOS SCRIPTS -->
 <script src="firebase.js"></script>
 <script src="data.js"></script>
 <script src="email-app.js"></script>
 <script src="app.js"></script>
-
-<!-- SCRIPT DE INICIALIZAÇÃO SIMPLES -->
-<script>
-    // Esperar DOM carregar
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 Iniciando sistema Porter...');
-        
-        // Inicializar app principal
-        if (typeof app !== 'undefined' && typeof app.init === 'function') {
-            setTimeout(function() {
-                try {
-                    app.init();
-                    console.log('✅ Sistema inicializado com sucesso');
-                } catch (error) {
-                    console.error('❌ Erro ao inicializar app:', error);
-                    alert('Erro ao carregar o sistema. Recarregue a página.');
-                }
-            }, 100);
-        } else {
-            console.error('❌ App não encontrado!');
-            alert('Sistema não carregou corretamente.');
-        }
-    });
-</script>
 
 </body>
 </html>
