@@ -1,19 +1,19 @@
-// firebase.js - MODO OFFLINE (GARANTIDO)
-console.log('🔧 Firebase em modo offline para testes');
+// firebase.js
 
-// Simula Firebase pronto mas offline
-window.firebaseDB = {
-    isReady: () => true,  // Sempre diz que está pronto
-    getDB: () => ({
-        ref: (path) => ({
-            set: () => Promise.resolve(),
-            update: () => Promise.resolve(),
-                            remove: () => Promise.resolve(),
-            on: () => {},
-            off: () => {},
-            once: () => Promise.resolve({ val: () => null })
-        })
-    })
+// Configuração do Firebase
+var firebaseConfig = {
+  apiKey: "AIzaSyAzfPWTcBtJk3UyOYdLIeSK3PlfjYKJAHI",
+  authDomain: "site-universal-29a2b.firebaseapp.com",
+  databaseURL: "https://site-universal-29a2b-default-rtdb.firebaseio.com",
+  projectId: "site-universal-29a2b",
+  storageBucket: "site-universal-29a2b.firebasestorage.app",
+  storageBucket: "site-universal-29a2b.appspot.com",
+  messagingSenderId: "793824632619",
+  appId: "1:793824632619:web:e035c64e33969a40932f6e"
 };
 
-console.log('✅ Firebase simulado - Sistema funcionará localmente');
+// Inicializa Firebase (SEM import/const)
+firebase.initializeApp(firebaseConfig);
+
+// Cria db no escopo global
+window.db = firebase.database();
