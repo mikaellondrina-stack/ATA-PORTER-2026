@@ -67,7 +67,7 @@ const emailApp = {
         });
         
         // Preencher nome automaticamente se usuário estiver logado
-        if (app.currentUser) {
+        if (app && app.currentUser) {
             document.getElementById('email-sender-name').value = app.currentUser.nome;
         } else {
             document.getElementById('email-sender-name').value = '';
@@ -81,9 +81,11 @@ const emailApp = {
         
         // Resetar status
         const statusDiv = document.getElementById('email-status');
-        statusDiv.className = 'email-status';
-        statusDiv.style.display = 'none';
-        statusDiv.innerHTML = '';
+        if (statusDiv) {
+            statusDiv.className = 'email-status';
+            statusDiv.style.display = 'none';
+            statusDiv.innerHTML = '';
+        }
         
         // Gerar novo CAPTCHA
         this.generateCaptcha();
@@ -97,7 +99,8 @@ const emailApp = {
             if (nameField && !nameField.value) {
                 nameField.focus();
             } else {
-                document.getElementById('email-subject').focus();
+                const subjectField = document.getElementById('email-subject');
+                if (subjectField) subjectField.focus();
             }
         }, 300);
     },
@@ -111,7 +114,8 @@ const emailApp = {
         const subject = document.getElementById('email-subject').value.trim();
         const message = document.getElementById('email-message').value.trim();
         const captchaAnswer = document.getElementById('captcha-answer').value.trim().toLowerCase();
-        const correctAnswer = document.getElementById('captcha-question').dataset.answer;
+        const captchaQuestion = document.getElementById('captcha-question');
+        const correctAnswer = captchaQuestion ? captchaQuestion.dataset.answer : '';
         
         // Validações básicas
         if (!name || name.length < 3) {
@@ -140,6 +144,8 @@ const emailApp = {
     
     showStatus(message, type) {
         const statusDiv = document.getElementById('email-status');
+        if (!statusDiv) return;
+        
         statusDiv.className = `email-status ${type}`;
         
         const icons = {
@@ -174,7 +180,7 @@ const emailApp = {
         const message = document.getElementById('email-message').value.trim();
         
         // Obter informações adicionais
-        const userInfo = app.currentUser ? `
+        const userInfo = app && app.currentUser ? `
 Operador: ${app.currentUser.nome}
 Turno: ${app.currentUser.turno}
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
@@ -200,6 +206,8 @@ ${condominioInfo}${userInfo}
         
         // Desabilitar botão
         const sendBtn = document.getElementById('email-send-btn');
+        if (!sendBtn) return;
+        
         const originalText = sendBtn.innerHTML;
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<div class="loading"></div> Enviando...';
@@ -247,7 +255,7 @@ ${condominioInfo}${userInfo}
                     from_email: this.EMAIL_CONFIG.FROM_EMAIL,
                     date: new Date().toLocaleString('pt-BR'),
                     status: 'sent_simulation',
-                    user: app.currentUser?.nome || 'Visitante'
+                    user: app && app.currentUser ? app.currentUser.nome : 'Visitante'
                 });
                 
                 this.showStatus(`✅ E-mail registrado! (Modo simulação) Seria enviado para ${this.EMAIL_CONFIG.TO_EMAILS.length} destinatário(s).`, 'success');
@@ -278,15 +286,17 @@ ${condominioInfo}${userInfo}
                 date: new Date().toLocaleString('pt-BR'),
                 status: 'error',
                 error: error.message,
-                user: app.currentUser?.nome || 'Visitante'
+                user: app && app.currentUser ? app.currentUser.nome : 'Visitante'
             });
             
             this.showStatus('❌ Erro ao enviar e-mail. Tente novamente ou contate o administrador.', 'error');
             
         } finally {
             // Reabilitar botão
-            sendBtn.disabled = false;
-            sendBtn.innerHTML = originalText;
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalText;
+            }
             
             // Gerar novo CAPTCHA
             this.generateCaptcha();
@@ -331,9 +341,12 @@ ${condominioInfo}${userInfo}
         localStorage.setItem('porter_notificacoes', JSON.stringify(notificacoes));
         
         // Atualizar notificações no sistema principal
-        if (app.loadNotifications) {
+        if (app && app.loadNotifications) {
             app.loadNotifications();
-            app.updateNotificationBadges();
+            if (app.updateNotificationBadges) {
+                app.updateNotificationBadges();
+            }
         }
     }
+
 };
