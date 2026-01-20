@@ -1,170 +1,106 @@
-// firebase.js
-// Configuração e inicialização do Firebase Realtime Database v8
+// firebase.js - CONFIGURAÇÃO CORRIGIDA
+console.log('🔧 Iniciando configuração do Firebase...');
 
-// Configuração do Firebase - CDN v8 (Compatível)
+// Sua configuração Firebase (use SUAS credenciais reais)
 const firebaseConfig = {
-  apiKey: "AIzaSyAzfPWTcBtJk3UyOYdLIeSK3PlfjYKJAHI",
-  authDomain: "site-universal-29a2b.firebaseapp.com",
-  databaseURL: "https://site-universal-29a2b-default-rtdb.firebaseio.com",
-  projectId: "site-universal-29a2b",
-  storageBucket: "site-universal-29a2b.appspot.com", // Único storageBucket correto
-  messagingSenderId: "793824632619",
-  appId: "1:793824632619:web:e035c64e33969a40932f6e"
+    apiKey: "SUA_API_KEY_AQUI",
+    authDomain: "SEU_PROJETO.firebaseapp.com",
+    databaseURL: "https://SEU_PROJETO.firebaseio.com",
+    projectId: "SEU_PROJETO",
+    storageBucket: "SEU_PROJETO.appspot.com",
+    messagingSenderId: "SEU_SENDER_ID",
+    appId: "SEU_APP_ID"
 };
 
-// Verificar se Firebase está carregado (CDN)
+// Variável global para controle
+let firebaseInitialized = false;
+let database = null;
+
 try {
-  if (typeof firebase === 'undefined') {
-    console.error('❌ Firebase não foi carregado. Verifique o CDN no HTML.');
-    throw new Error('Firebase não encontrado. CDN pode não ter carregado.');
-  }
-  
-  // Inicializar Firebase
-  firebase.initializeApp(firebaseConfig);
-  console.log('✅ Firebase inicializado com sucesso');
-  
-  // Exportar instâncias principais para uso global
-  window.db = firebase.database();           // Database principal
-  window.firebaseAuth = firebase.auth();     // Autenticação (se necessário)
-  window.firebaseApp = firebase.app();       // App instance
-  
-  // Verificar conexão
-  const connectedRef = window.db.ref('.info/connected');
-  connectedRef.on('value', (snap) => {
-    if (snap.val() === true) {
-      console.log('✅ Conectado ao Firebase Realtime Database');
-    } else {
-      console.log('⚠️ Desconectado do Firebase');
+    // Verificar se Firebase está disponível
+    if (typeof firebase === 'undefined') {
+        console.warn('⚠️ Firebase não encontrado. Verifique se o script foi carregado.');
+        throw new Error('Firebase não disponível');
     }
-  });
-  
-  // Monitorar erros de conexão
-  window.db.ref('.info/connected').on('value', (snapshot) => {
-    if (snapshot.val() === true) {
-      console.log('📡 Conexão Firebase: ATIVA');
-    }
-  });
-  
-  window.db.ref('.info/connected').on('disconnect', () => {
-    console.warn('⚠️ Firebase desconectado');
-  });
-  
+
+    // Inicializar Firebase APENAS com App e Database
+    console.log('🚀 Inicializando Firebase App...');
+    firebase.initializeApp(firebaseConfig);
+    
+    // Inicializar APENAS Database (não auth)
+    console.log('🚀 Inicializando Firebase Database...');
+    database = firebase.database();
+    
+    firebaseInitialized = true;
+    console.log('✅ Firebase inicializado com sucesso!');
+    
 } catch (error) {
-  console.error('❌ Erro ao inicializar Firebase:', error);
-  
-  // Fallback: Criar objeto db simulado para evitar erros
-  window.db = {
-    ref: () => ({ 
-      set: () => Promise.reject('Firebase não inicializado'),
-      update: () => Promise.reject('Firebase não inicializado'),
-      remove: () => Promise.reject('Firebase não inicializado'),
-      on: () => console.warn('Firebase não inicializado'),
-      off: () => {},
-      once: () => Promise.reject('Firebase não inicializado')
-    }),
-    // Métodos comuns
-    goOffline: () => {},
-    goOnline: () => {}
-  };
-  
-  console.warn('⚠️ Usando fallback para Firebase (modo offline)');
+    console.error('❌ Erro ao inicializar Firebase:', error);
+    console.warn('⚠️ Usando fallback para Firebase (modo offline)');
+    firebaseInitialized = false;
 }
 
-// 🔥 Funções auxiliares para uso em outros arquivos
-window.firebaseHelpers = {
-  
-  // Verificar se Firebase está disponível
-  isFirebaseAvailable() {
-    return typeof window.db !== 'undefined' && 
-           typeof window.db.ref === 'function' &&
-           !window.db.ref().set.toString().includes('Firebase não inicializado');
-  },
-  
-  // Testar conexão
-  testConnection() {
-    if (!this.isFirebaseAvailable()) {
-      return Promise.resolve(false);
+// Funções utilitárias
+function isFirebaseReady() {
+    return firebaseInitialized && database !== null;
+}
+
+function getDatabase() {
+    if (!isFirebaseReady()) {
+        console.warn('⚠️ Firebase não disponível, retornando null');
+        return null;
+    }
+    return database;
+}
+
+// Função para testar conexão
+function testFirebaseConnection() {
+    if (!isFirebaseReady()) {
+        console.log('🔌 Firebase não inicializado');
+        return Promise.resolve(false);
     }
     
     return new Promise((resolve) => {
-      const testRef = window.db.ref('connection_test');
-      const testKey = 'test_' + Date.now();
-      
-      testRef.child(testKey).set({
-        timestamp: Date.now(),
-        test: true
-      })
-      .then(() => {
-        // Limpar teste
-        testRef.child(testKey).remove();
-        resolve(true);
-      })
-      .catch(() => {
-        resolve(false);
-      });
+        const testRef = database.ref('.info/connected');
+        testRef.on('value', (snap) => {
+            if (snap.val() === true) {
+                console.log('✅ Conectado ao Firebase em tempo real');
+                resolve(true);
+            } else {
+                console.log('⚠️ Firebase desconectado');
+                resolve(false);
+            }
+            testRef.off(); // Remove listener após teste
+        });
+        
+        // Timeout após 3 segundos
+        setTimeout(() => {
+            console.log('⏰ Timeout na conexão Firebase');
+            resolve(false);
+        }, 3000);
     });
-  },
-  
-  // Obter timestamp do servidor Firebase
-  getServerTimestamp() {
-    if (this.isFirebaseAvailable()) {
-      return firebase.database.ServerValue.TIMESTAMP;
-    }
-    return Date.now();
-  },
-  
-  // Criar referência segura para usuários
-  getUserRef(userId) {
-    if (!this.isFirebaseAvailable()) return null;
-    
-    // Sanitizar userId para evitar problemas
-    const safeUserId = String(userId || '')
-      .replace(/[.#$\[\]]/g, '_')
-      .substring(0, 100);
-    
-    return window.db.ref('users/' + safeUserId);
-  },
-  
-  // Criar referência para presença online
-  getPresenceRef() {
-    if (!this.isFirebaseAvailable()) return null;
-    return window.db.ref('presence');
-  },
-  
-  // Método para limpar todas as referências (útil no logout)
-  cleanup() {
-    if (window.db && typeof window.db.goOffline === 'function') {
-      window.db.goOffline();
-    }
-  }
-};
-
-// Adicionar evento para reconexão
-if (window.db && typeof window.db.goOnline === 'function') {
-  window.addEventListener('online', () => {
-    console.log('🌐 Reconectando ao Firebase...');
-    window.db.goOnline();
-  });
-  
-  window.addEventListener('offline', () => {
-    console.warn('📴 Sem conexão - Firebase offline');
-    window.db.goOffline();
-  });
 }
 
-// Log para debugging
-console.log('🔧 firebase.js carregado:', {
-  config: firebaseConfig.projectId ? 'OK' : 'FALHA',
-  db: typeof window.db !== 'undefined' ? 'DISPOSTÍVEL' : 'INDISPONÍVEL',
-  helpers: typeof window.firebaseHelpers !== 'undefined' ? 'OK' : 'FALHA',
-  timestamp: new Date().toISOString()
-});
+// Exportar para uso global
+window.firebaseApp = {
+    isReady: isFirebaseReady,
+    getDb: getDatabase,
+    testConnection: testFirebaseConnection,
+    config: firebaseInitialized ? firebaseConfig : null
+};
 
-// Exportar para módulos (se necessário)
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    firebaseConfig,
-    db: window.db,
-    firebaseHelpers: window.firebaseHelpers
-  };
+console.log('🔧 firebase.js carregado:', window.firebaseApp);
+
+// Testar conexão automaticamente
+if (isFirebaseReady()) {
+    setTimeout(() => {
+        testFirebaseConnection().then(connected => {
+            if (connected) {
+                console.log('🎉 Sistema global pronto!');
+                // Disparar evento para presence.js saber que Firebase está pronto
+                const event = new CustomEvent('firebase-ready', { detail: { connected: true } });
+                window.dispatchEvent(event);
+            }
+        });
+    }, 1000);
 }
