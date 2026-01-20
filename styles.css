@@ -1,4 +1,4 @@
-estilos.css: :root {
+:root {
     --primary: #1a3a5f;
     --accent: #e67e22;
     --bg: #f0f2f5;
@@ -1786,5 +1786,4 @@ table tr:hover {
     0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); }
     70% { box-shadow: 0 0 0 15px rgba(230, 126, 34, 0); }
     100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); }
-
 }
