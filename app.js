@@ -67,7 +67,6 @@ const app = {
 
         // Inicializar sistema de e-mail
         setTimeout(() => {
-            emailApp.init();
             if (typeof emailApp !== 'undefined') {
                 emailApp.init();
             }
@@ -76,30 +75,43 @@ const app = {
 
     setupEventListeners() {
         // Enter no login
-        document.getElementById('login-pass').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.login();
-        });
+        const loginPass = document.getElementById('login-pass');
+        if (loginPass) {
+            loginPass.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.login();
+            });
+        }
 
         // Enter no chat
-        document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendChatMessage();
-            }
-        });
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendChatMessage();
+                }
+            });
+        }
 
         // Salvar logoff quando a página for fechada
         window.addEventListener('beforeunload', () => {
             if (this.currentUser) {
                 this.registrarLogoff();
+                // 🔥 IMPORTANTE: Atualizar status no Firebase
+                if (typeof presenceManager !== 'undefined') {
+                    presenceManager.updateUserStatus('offline');
+                }
             }
         });
 
         // Operadores online
-        document.getElementById('online-users').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleOnlineUsers();
-        });
+        const onlineUsersEl = document.getElementById('online-users');
+        if (onlineUsersEl) {
+            onlineUsersEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleOnlineUsers();
+            });
+        }
     },
 
     setupAutoSave() {
@@ -113,130 +125,55 @@ const app = {
     setupResponsive() {
         window.addEventListener('resize', () => {
             if (this.currentUser) {
-                if (window.innerWidth > 1200) {
-                    document.getElementById('sidebar').style.display = 'block';
-                    document.getElementById('sidebar').classList.remove('show');
-                } else {
-                    document.getElementById('sidebar').style.display = 'none';
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) {
+                    if (window.innerWidth > 1200) {
+                        sidebar.style.display = 'block';
+                        sidebar.classList.remove('show');
+                    } else {
+                        sidebar.style.display = 'none';
+                    }
                 }
             }
         });
     },
 
     setupOnlineTracking() {
-        // Atualizar a cada 30 segundos
-        this.onlineInterval = setInterval(() => {
-            if (this.currentUser) {
-                this.updateOnlineUsers();
-            }
-        }, 30000);
+        // 🔥 IMPORTANTE: NÃO usar localStorage para online/offline
+        // A presença real é gerenciada pelo presence.js via Firebase
+        
+        // Configurar listener para atualizações do Firebase
+        if (typeof presenceManager !== 'undefined') {
+            // Quando o status dos usuários mudar no Firebase, atualizar a interface
+            presenceManager.onUsersUpdate((users) => {
+                this.onlineUsers = users;
+                this.updateOnlineUI();
+            });
+        }
 
-        // Inicializar imediamente
-        // Inicializar imediatamente
-        this.updateOnlineUsers();
+        // Iniciar presença do usuário atual no Firebase
+        if (this.currentUser && typeof presenceManager !== 'undefined') {
+            presenceManager.setUserOnline(this.currentUser);
+        }
     },
 
-    getMoodStatusTexto(mood) {
-        const statusMap = {
-            '😠': 'Zangado hoje',
-            '😔': 'Triste hoje', 
-            '😐': 'Neutro hoje',
-            '🙂': 'Feliz hoje',
-            '😄': 'Radiante hoje'
-        };
-        return statusMap[mood] || 'Não avaliado';
-    },
-
-    // 📋 FUNÇÃO ATUALIZADA: updateOnlineUsers CORRIGIDA - MOSTRA APENAS USUÁRIOS REAIS
+    // 🔥 FUNÇÃO ATUALIZADA: updateOnlineUsers - AGORA USA FIREBASE
     updateOnlineUsers() {
         if (!this.currentUser) return;
 
-        const agora = new Date();
-
-        // Buscar usuários realmente online do localStorage
-        let usuariosOnline = [];
-
-        // Adicionar usuário atual
-        const moodAtual = this.getMoodAtual();
-        const statusMood = this.getMoodStatusTexto(moodAtual);
-
-        usuariosOnline.push({
-            ...this.currentUser,
-            lastActivity: agora.toISOString(),
-            mood: moodAtual,
-            moodStatus: statusMood,
-            isCurrentUser: true
-        });
-
-        // Verificar se há outros usuários com sessão ativa (últimos 5 minutos)
-        try {
-            const sessaoSalva = localStorage.getItem('porter_last_session');
-            if (sessaoSalva) {
-                const sessao = JSON.parse(sessaoSalva);
-                if (sessao.user !== this.currentUser.user) {
-                    const tempoSessao = new Date(sessao.lastActivity);
-                    const diferencaMinutos = (agora - tempoSessao) / (1000 * 60);
-
-                    if (diferencaMinutos < 5) {
-                        // Este é um usuário que está "online"
-                        const outroUsuario = DATA.funcionarios.find(f => f.user === sessao.user);
-                        if (outroUsuario) {
-                            usuariosOnline.push({
-                                ...outroUsuario,
-                                lastActivity: sessao.lastActivity,
-                                mood: '😐', // Mood padrão para usuários não ativos
-                                moodStatus: 'Online há ' + Math.floor(diferencaMinutos) + ' min',
-                                isCurrentUser: false,
-                                turno: sessao.turno || 'Diurno'
-                            });
-             try {
-    // ... seu código que preenche usuariosOnline ...
-    
-    this.onlineUsers = usuariosOnline;
-
-    // ------------------ ATUALIZA LISTA DE USUÁRIOS ONLINE ------------------
-    const onlineUsersListEl = document.getElementById("online-users-list");
-    const onlineCountEl = document.getElementById("online-count");
-
-    function getUserNameFromId(userId) {
-        if (userId.startsWith("user_")) {
-            const id = userId.replace("user_", "");
-            if (window.currentUser && window.currentUser.uid === id) {
-                return window.currentUser.name || id;
-                        }
-                    }
-                }
-            }
-            if (id.startsWith("guest_")) return id;
-            return id;
-        } catch (e) {
-            console.log('Erro ao buscar sessões:', e);
+        // 🔥 IMPORTANTE: Pegar usuários online do Firebase via presenceManager
+        if (typeof presenceManager !== 'undefined') {
+            this.onlineUsers = presenceManager.getOnlineUsers();
+            this.updateOnlineUI();
+        } else {
+            console.warn('presenceManager não está disponível');
+            // Fallback temporário
+            this.updateOnlineUI();
         }
-        return userId;
-    }
+    },
 
-    // Limpa e atualiza a lista
-    onlineUsersListEl.innerHTML = "";
-    let count = 0;
-    for (const key in usuariosOnline) {
-        if (usuariosOnline[key].online) {
-            count++;
-            const userEl = document.createElement("div");
-            userEl.className = "online-user";
-            userEl.textContent = getUserNameFromId(key);
-            onlineUsersListEl.appendChild(userEl);
-        }
-    }
-    onlineCountEl.textContent = count;
-    // ------------------ FIM DA ATUALIZAÇÃO ------------------
-
-} catch (e) {
-    console.log('Erro ao buscar sessões:', e);
-}
-
-        
-        this.onlineUsers = usuariosOnline;
-
+    // 🔥 NOVA FUNÇÃO: updateOnlineUI - Atualiza apenas a interface
+    updateOnlineUI() {
         // Atualizar contador
         const onlineCount = document.getElementById('online-count');
         if (onlineCount) {
@@ -254,12 +191,9 @@ const app = {
         if (onlineList && onlineList.style.display === 'block') {
             this.renderOnlineUsersList();
         }
-
-        this.salvarSessao();
-    }
     },
 
-    // 📋 FUNÇÃO ATUALIZADA: renderOnlineUsersList CORRIGIDA
+    // 🔥 FUNÇÃO ATUALIZADA: renderOnlineUsersList - Usa dados do Firebase
     renderOnlineUsersList() {
         const list = document.getElementById('online-users-list');
         if (!list) return;
@@ -282,9 +216,9 @@ const app = {
         const usuariosOrdenados = [...this.onlineUsers].sort((a, b) => {
             if (a.role === 'ADMIN' && b.role !== 'ADMIN') return -1;
             if (b.role === 'ADMIN' && a.role !== 'ADMIN') return 1;
-            if (a.isCurrentUser && !b.isCurrentUser) return -1;
-            if (!a.isCurrentUser && b.isCurrentUser) return 1;
-            return a.nome.localeCompare(b.nome);
+            if (a.userId === this.currentUser?.user && b.userId !== this.currentUser?.user) return -1;
+            if (b.userId === this.currentUser?.user && a.userId !== this.currentUser?.user) return 1;
+            return a.name.localeCompare(b.name);
         });
 
         usuariosOrdenados.forEach(user => {
@@ -292,12 +226,15 @@ const app = {
             userItem.className = 'online-user-item';
 
             // Calcular tempo desde última atividade
-            const tempoAtivo = user.lastActivity ? 
-                this.formatarTempoAtivo(new Date(user.lastActivity)) : 
+            const tempoAtivo = user.lastSeen ? 
+                this.formatarTempoAtivo(new Date(user.lastSeen)) : 
                 'Agora mesmo';
 
             // Definir cor do status baseado no humor
-            const statusColor = this.getCorPorMood(user.mood);
+            const statusColor = this.getCorPorMood(user.mood || '😐');
+
+            // Verificar se é o usuário atual
+            const isCurrentUser = user.userId === this.currentUser?.user;
 
             userItem.innerHTML = `
                 <div class="online-user-avatar" style="background: ${statusColor}; color: ${user.mood === '😐' ? '#333' : 'white'};">
@@ -305,18 +242,18 @@ const app = {
                 </div>
                 <div class="online-user-info">
                     <div class="online-user-name">
-                        ${user.nome.split(' ')[0]}
+                        ${user.name.split(' ')[0]}
                         ${user.role === 'ADMIN' ? ' 👑' : ''}
-                        ${user.isCurrentUser ? '<span style="color: #3498db; font-size: 0.8rem;"> (Você)</span>' : ''}
+                        ${isCurrentUser ? '<span style="color: #3498db; font-size: 0.8rem;"> (Você)</span>' : ''}
                     </div>
                     <div class="online-user-role">
-                        ${user.moodStatus || 'Online'}
+                        ${user.status || 'Online'}
                         <div style="font-size: 0.7rem; color: #888; margin-top: 2px;">
                             <i class="far fa-clock"></i> ${tempoAtivo}
                         </div>
                     </div>
                 </div>
-                <div class="online-status" style="background: ${user.isCurrentUser ? '#3498db' : '#2ecc71'};"></div>
+                <div class="online-status" style="background: ${isCurrentUser ? '#3498db' : '#2ecc71'};"></div>
             `;
 
             list.appendChild(userItem);
@@ -345,7 +282,7 @@ const app = {
         list.appendChild(rodape);
     },
 
-    // 📋 FUNÇÃO ATUALIZADA: toggleOnlineUsers CORRIGIDA
+    // 🔥 FUNÇÃO ATUALIZADA: toggleOnlineUsers - Sincronizada com Firebase
     toggleOnlineUsers() {
         const list = document.getElementById('online-users-list');
         if (!list) return;
@@ -358,7 +295,7 @@ const app = {
         if (estaVisivel) {
             list.style.display = 'none';
         } else {
-            // Atualizar lista ANTES de mostrar
+            // Atualizar lista ANTES de mostrar (do Firebase)
             this.updateOnlineUsers();
 
             // Posicionar corretamente
@@ -377,6 +314,17 @@ const app = {
             // Garantir que o conteúdo será renderizado
             this.renderOnlineUsersList();
         }
+    },
+
+    getMoodStatusTexto(mood) {
+        const statusMap = {
+            '😠': 'Zangado hoje',
+            '😔': 'Triste hoje', 
+            '😐': 'Neutro hoje',
+            '🙂': 'Feliz hoje',
+            '😄': 'Radiante hoje'
+        };
+        return statusMap[mood] || 'Não avaliado';
     },
 
     formatarTempoAtivo(dataAtividade) {
@@ -406,12 +354,15 @@ const app = {
 
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('show');
+        if (sidebar) {
+            sidebar.classList.toggle('show');
+        }
     },
 
     registrarLogoff() {
         if (!this.currentUser) return;
 
+        // Registrar logoff no histórico local
         const logoffs = JSON.parse(localStorage.getItem('porter_logoffs') || '[]');
         const logoffData = {
             user: this.currentUser.user,
@@ -428,6 +379,11 @@ const app = {
 
         this.lastLogoffTime = new Date().toISOString();
         localStorage.setItem('porter_last_logoff', this.lastLogoffTime);
+
+        // 🔥 IMPORTANTE: Atualizar status no Firebase
+        if (typeof presenceManager !== 'undefined') {
+            presenceManager.updateUserStatus('offline');
+        }
 
         // Limpar intervalos
         if (this.chatInterval) {
@@ -461,10 +417,17 @@ const app = {
         };
 
         localStorage.setItem('porter_last_session', JSON.stringify(sessionData));
+
+        // 🔥 IMPORTANTE: Atualizar status no Firebase (mantém online)
+        if (typeof presenceManager !== 'undefined') {
+            presenceManager.updateUserActivity();
+        }
     },
 
     loadCondos() {
         const sidebarList = document.getElementById('condo-list');
+        if (!sidebarList) return;
+
         sidebarList.innerHTML = '';
 
         const ataSelect = document.getElementById('ata-condo');
@@ -472,10 +435,13 @@ const app = {
         const filterSelect = document.getElementById('filter-condo');
         const reportSelect = document.getElementById('report-condo');
 
-        ataSelect.innerHTML = '<option value="">Selecione um condomínio...</option>';
-        osSelect.innerHTML = '<option value="">Selecione um condomínio...</option>';
-        filterSelect.innerHTML = '<option value="">Todos os condomínios</option>';
-        reportSelect.innerHTML = '<option value="">Todos os condomínios</option>';
+        const selects = [ataSelect, osSelect, filterSelect, reportSelect].filter(s => s);
+
+        selects.forEach(select => {
+            if (select) {
+                select.innerHTML = '<option value="">Selecione um condomínio...</option>';
+            }
+        });
 
         DATA.condominios.sort((a,b) => a.n.localeCompare(b.n)).forEach(c => {
             const condoItem = document.createElement('div');
@@ -489,17 +455,21 @@ const app = {
             `;
             sidebarList.appendChild(condoItem);
 
-            [ataSelect, osSelect, filterSelect, reportSelect].forEach(select => {
-                const opt = document.createElement('option');
-                opt.value = c.n;
-                opt.textContent = c.n;
-                select.appendChild(opt);
+            selects.forEach(select => {
+                if (select) {
+                    const opt = document.createElement('option');
+                    opt.value = c.n;
+                    opt.textContent = c.n;
+                    select.appendChild(opt);
+                }
             });
         });
     },
 
     loadFiltros() {
         const filterOperador = document.getElementById('filter-presenca-operador');
+        if (!filterOperador) return;
+
         filterOperador.innerHTML = '<option value="">Todos os operadores</option>';
         DATA.funcionarios.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(f => {
             let opt = document.createElement('option');
@@ -510,6 +480,9 @@ const app = {
     },
 
     carregarMoodOptions() {
+        const container = document.getElementById('mood-options');
+        if (!container) return;
+
         const MOOD_OPTIONS = [
             { id: 1, label: "Zangado", color: "#e74c3c", status: "😠 Zangado", description: "Raiva ou tristeza profunda" },
             { id: 2, label: "Triste", color: "#e67e22", status: "😔 Triste", description: "Desânimo ou insatisfação" },
@@ -518,7 +491,6 @@ const app = {
             { id: 5, label: "Radiante", color: "#27ae60", status: "😄 Radiante", description: "Felicidade plena e euforia" }
         ];
 
-        const container = document.getElementById('mood-options');
         container.innerHTML = '';
 
         MOOD_OPTIONS.forEach(mood => {
@@ -563,21 +535,22 @@ const app = {
             el.classList.remove('selected');
         });
 
-        document.querySelector(`.mood-option[data-id="${moodId}"]`).classList.add('selected');
-        document.getElementById('mood-status').innerHTML = `
-            <i class="fas fa-check-circle" style="color: ${document.querySelector(`.mood-option[data-id="${moodId}"]`).style.color}"></i>
-            <span>Selecionado: <strong>${this.selectedMood.status}</strong></span>
-        `;
         const selectedEl = document.querySelector(`.mood-option[data-id="${moodId}"]`);
         if (selectedEl) {
             selectedEl.classList.add('selected');
-            document.getElementById('mood-status').innerHTML = `
-                <i class="fas fa-check-circle" style="color: ${selectedEl.style.color}"></i>
-                <span>Selecionado: <strong>${this.selectedMood.status}</strong></span>
-            `;
+            const moodStatus = document.getElementById('mood-status');
+            if (moodStatus) {
+                moodStatus.innerHTML = `
+                    <i class="fas fa-check-circle" style="color: ${selectedEl.style.color}"></i>
+                    <span>Selecionado: <strong>${this.selectedMood.status}</strong></span>
+                `;
+            }
         }
 
-        document.getElementById('mood-submit-btn').disabled = false;
+        const submitBtn = document.getElementById('mood-submit-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
     },
 
     enviarMood() {
@@ -610,23 +583,30 @@ const app = {
         localStorage.setItem('porter_moods', JSON.stringify(moods));
 
         const resultDiv = document.getElementById('mood-result');
-        resultDiv.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            <strong>Sentimento registrado com sucesso!</strong>
-            <span>${this.selectedMood.status}</span>
-        `;
-        resultDiv.classList.remove('hidden');
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <i class="fas fa-check-circle"></i>
+                <strong>Sentimento registrado com sucesso!</strong>
+                <span>${this.selectedMood.status}</span>
+            `;
+            resultDiv.classList.remove('hidden');
+        }
 
-        document.getElementById('mood-submit-btn').disabled = true;
+        const submitBtn = document.getElementById('mood-submit-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
 
-        // Atualizar lista de online
+        // Atualizar lista de online (mood mudou)
         this.updateOnlineUsers();
 
         // Atualizar a área do usuário
         this.updateUserInfo();
 
         setTimeout(() => {
-            resultDiv.classList.add('hidden');
+            if (resultDiv) {
+                resultDiv.classList.add('hidden');
+            }
             this.verificarMoodHoje();
         }, 5000);
     },
@@ -641,7 +621,9 @@ const app = {
         if (jaAvaliouHoje) {
             setTimeout(() => {
                 const moodContainer = document.getElementById('mood-check-container');
-                moodContainer.classList.add('hidden');
+                if (moodContainer) {
+                    moodContainer.classList.add('hidden');
+                }
             }, 2000);
         }
     },
@@ -657,21 +639,32 @@ const app = {
     },
 
     updateCity() {
-        const condoName = document.getElementById('ata-condo').value;
-        const condo = DATA.condominios.find(c => c.n === condoName);
-        document.getElementById('ata-cidade').value = condo ? condo.c : "";
+        const condoName = document.getElementById('ata-condo');
+        const cidade = document.getElementById('ata-cidade');
+        if (!condoName || !cidade) return;
+
+        const condo = DATA.condominios.find(c => c.n === condoName.value);
+        cidade.value = condo ? condo.c : "";
     },
 
     updateCityOS() {
-        const condoName = document.getElementById('os-condo').value;
-        const condo = DATA.condominios.find(c => c.n === condoName);
-        document.getElementById('os-cidade').value = condo ? condo.c : "";
+        const condoName = document.getElementById('os-condo');
+        const cidade = document.getElementById('os-cidade');
+        if (!condoName || !cidade) return;
+
+        const condo = DATA.condominios.find(c => c.n === condoName.value);
+        cidade.value = condo ? condo.c : "";
     },
 
     login() {
-        const u = document.getElementById('login-user').value.trim();
-        const p = document.getElementById('login-pass').value;
-        const t = document.getElementById('login-turno').value;
+        const u = document.getElementById('login-user')?.value.trim();
+        const p = document.getElementById('login-pass')?.value;
+        const t = document.getElementById('login-turno')?.value;
+
+        if (!u || !p || !t) {
+            alert('Preencha todos os campos!');
+            return;
+        }
 
         const user = DATA.funcionarios.find(f => f.user === u && f.pass === p);
 
@@ -714,35 +707,42 @@ const app = {
 
         // MOSTRAR SIDEBAR APÓS LOGIN
         if (window.innerWidth > 1200) {
-            document.getElementById('sidebar').style.display = 'block';
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.style.display = 'block';
+            }
         }
 
         this.updateUserInfo();
 
         this.carregarMoodOptions();
         const jaAvaliou = this.jaAvaliouHoje();
-        if (!jaAvaliou) {
-            document.getElementById('mood-check-container').classList.remove('hidden');
+        const moodContainer = document.getElementById('mood-check-container');
+        if (moodContainer) {
+            if (!jaAvaliou) {
+                moodContainer.classList.remove('hidden');
+            } else {
+                moodContainer.classList.add('hidden');
+            }
         }
 
         this.renderAll();
         this.updateNotificationBadges();
         this.salvarSessao();
 
-        // 🆕 ATUALIZAR OPERADORES ONLINE IMEDIATAMENTE
+        // 🔥 ATUALIZAR OPERADORES ONLINE VIA FIREBASE
+        this.setupOnlineTracking();
         this.updateOnlineUsers();
 
         // Se for admin, mostrar controles
-        if (this.currentUser.role === 'ADMIN') {
-            document.getElementById('admin-controls').style.display = 'flex';
+        const adminControls = document.getElementById('admin-controls');
+        if (adminControls && this.currentUser.role === 'ADMIN') {
+            adminControls.style.display = 'flex';
         }
 
         // Iniciar chat
         this.loadChat();
         this.chatInterval = setInterval(() => this.loadChat(), 5000);
-
-        // Iniciar tracking de online
-        this.setupOnlineTracking();
 
         // 🆕 Inicializar visto por
         this.registrarVisualizacaoChat();
@@ -750,7 +750,7 @@ const app = {
 
     updateUserInfo() {
         const userInfo = document.getElementById('user-info');
-        if (this.currentUser) {
+        if (userInfo && this.currentUser) {
             const moodAtual = this.getMoodAtual();
             userInfo.innerHTML = `
                 <div class="user-info-name">
@@ -780,7 +780,7 @@ const app = {
         if (confirm('Deseja realmente sair do sistema?')) {
             this.registrarLogoff();
 
-            // Limpar intervalos primeiro
+            // Limpar intervalos
             if (this.chatInterval) {
                 clearInterval(this.chatInterval);
                 this.chatInterval = null;
@@ -819,8 +819,8 @@ const app = {
     switchTab(tabId, btn) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(tabId).classList.remove('hidden');
-        btn.classList.add('active');
+        document.getElementById(tabId)?.classList.remove('hidden');
+        if (btn) btn.classList.add('active');
 
         // Se for a aba de chat, carregar mensagens e marcar como visualizado
         if (tabId === 'tab-chat') {
@@ -833,11 +833,14 @@ const app = {
         const atas = JSON.parse(localStorage.getItem('porter_atas') || '[]');
         const fixas = atas.filter(a => a.tipo && a.tipo.includes('Informações Fixas'));
         const os = JSON.parse(localStorage.getItem('porter_os') || '[]');
-        const chat = JSON.parse(localStorage.getItem('porter_chat') || '[]');
 
-        document.getElementById('tab-count-ata').textContent = atas.length;
-        document.getElementById('tab-count-fixas').textContent = fixas.length;
-        document.getElementById('tab-count-os').textContent = os.length;
+        const tabAta = document.getElementById('tab-count-ata');
+        const tabFixas = document.getElementById('tab-count-fixas');
+        const tabOs = document.getElementById('tab-count-os');
+
+        if (tabAta) tabAta.textContent = atas.length;
+        if (tabFixas) tabFixas.textContent = fixas.length;
+        if (tabOs) tabOs.textContent = os.length;
 
         // 🆕 Usar função atualizarBadgeChat
         this.atualizarBadgeChat();
@@ -856,20 +859,22 @@ const app = {
 
         const badge = document.getElementById('chat-badge');
 
-        if (mensagensNaoVisualizadas > 0) {
-            badge.textContent = mensagensNaoVisualizadas > 99 ? '99+' : mensagensNaoVisualizadas;
-            badge.style.display = 'inline-block';
+        if (badge) {
+            if (mensagensNaoVisualizadas > 0) {
+                badge.textContent = mensagensNaoVisualizadas > 99 ? '99+' : mensagensNaoVisualizadas;
+                badge.style.display = 'inline-block';
 
-            const chatTab = document.querySelector('.chat-tab');
-            if (chatTab) {
-                chatTab.classList.add('has-new-message');
-            }
-        } else {
-            badge.textContent = '0';
-            badge.style.display = 'none';
-            const chatTab = document.querySelector('.chat-tab');
-            if (chatTab) {
-                chatTab.classList.remove('has-new-message');
+                const chatTab = document.querySelector('.chat-tab');
+                if (chatTab) {
+                    chatTab.classList.add('has-new-message');
+                }
+            } else {
+                badge.textContent = '0';
+                badge.style.display = 'none';
+                const chatTab = document.querySelector('.chat-tab');
+                if (chatTab) {
+                    chatTab.classList.remove('has-new-message');
+                }
             }
         }
 
@@ -922,11 +927,11 @@ const app = {
 
     aplicarFiltrosAtas() {
         this.filtrosAtas = {
-            condo: document.getElementById('filter-condo').value,
-            dataInicio: document.getElementById('filter-data-inicio').value,
-            dataFim: document.getElementById('filter-data-fim').value,
-            tipo: document.getElementById('filter-tipo').value,
-            status: document.getElementById('filter-status').value
+            condo: document.getElementById('filter-condo')?.value || '',
+            dataInicio: document.getElementById('filter-data-inicio')?.value || '',
+            dataFim: document.getElementById('filter-data-fim')?.value || '',
+            tipo: document.getElementById('filter-tipo')?.value || '',
+            status: document.getElementById('filter-status')?.value || ''
         };
 
         localStorage.setItem('porter_filtros_atas', JSON.stringify(this.filtrosAtas));
@@ -953,7 +958,10 @@ const app = {
     },
 
     filtrarPorCondominio(condoName) {
-        document.getElementById('filter-condo').value = condoName;
+        const filterCondo = document.getElementById('filter-condo');
+        if (filterCondo) {
+            filterCondo.value = condoName;
+        }
         this.currentCondoFilter = condoName;
         this.aplicarFiltrosAtas();
 
@@ -974,10 +982,10 @@ const app = {
 
     aplicarFiltrosPresenca() {
         this.filtrosPresenca = {
-            operador: document.getElementById('filter-presenca-operador').value,
-            dataInicio: document.getElementById('filter-presenca-inicio').value,
-            dataFim: document.getElementById('filter-presenca-fim').value,
-            turno: document.getElementById('filter-presenca-turno').value
+            operador: document.getElementById('filter-presenca-operador')?.value || '',
+            dataInicio: document.getElementById('filter-presenca-inicio')?.value || '',
+            dataFim: document.getElementById('filter-presenca-fim')?.value || '',
+            turno: document.getElementById('filter-presenca-turno')?.value || ''
         };
 
         localStorage.setItem('porter_filtros_presenca', JSON.stringify(this.filtrosPresenca));
@@ -1023,6 +1031,8 @@ const app = {
 
     mostrarFiltrosAtivosAtas() {
         const container = document.getElementById('filtros-ativos-ata');
+        if (!container) return;
+
         const filtros = [];
 
         if (this.filtrosAtas.condo) filtros.push(`Condomínio: ${this.filtrosAtas.condo}`);
@@ -1091,10 +1101,10 @@ const app = {
 
         const config = configs[gravidade] || configs['Média'];
 
-        previewTexto.textContent = config.texto;
-        previewTexto.style.color = config.cor;
-        previewIcone.innerHTML = `<i class="fas ${config.icone}" style="color: ${config.cor}"></i>`;
-        previewPrazo.textContent = config.prazo;
+        if (previewTexto) previewTexto.textContent = config.texto;
+        if (previewTexto) previewTexto.style.color = config.cor;
+        if (previewIcone) previewIcone.innerHTML = `<i class="fas ${config.icone}" style="color: ${config.cor}"></i>`;
+        if (previewPrazo) previewPrazo.textContent = config.prazo;
         previewDiv.style.display = 'block';
         previewDiv.style.borderLeft = `4px solid ${config.cor}`;
     },
@@ -1130,21 +1140,21 @@ const app = {
     },
 
     saveAta() {
-        const condo = document.getElementById('ata-condo').value;
-        const desc = document.getElementById('ata-desc').value.trim();
-        const tipo = document.getElementById('ata-tipo').value;
+        const condo = document.getElementById('ata-condo')?.value;
+        const desc = document.getElementById('ata-desc')?.value.trim();
+        const tipo = document.getElementById('ata-tipo')?.value;
 
-        if (!condo || !desc) {
-            alert('Preencha todos os campos obrigatórios! (Condomínio e Descrição)');
+        if (!condo || !desc || !tipo) {
+            alert('Preencha todos os campos obrigatórios! (Condomínio, Tipo e Descrição)');
             return;
         }
 
         const novaAta = {
             id: Date.now(),
             condo,
-            cidade: document.getElementById('ata-cidade').value,
+            cidade: document.getElementById('ata-cidade')?.value || '',
             tipo: tipo,
-            status: document.getElementById('ata-status').value,
+            status: document.getElementById('ata-status')?.value || '',
             desc,
             operador: this.currentUser.nome,
             user: this.currentUser.user,
@@ -1251,6 +1261,8 @@ const app = {
         this.notifications = notificacoes;
 
         const list = document.getElementById('notifications-list');
+        if (!list) return;
+
         list.innerHTML = '';
 
         if (notificacoes.length === 0) {
@@ -1355,11 +1367,13 @@ const app = {
         const naoLidas = notificacoes.filter(n => !n.lida).length;
 
         const badge = document.getElementById('notification-count');
-        if (naoLidas > 0) {
-            badge.textContent = naoLidas > 99 ? '99+' : naoLidas;
-            badge.style.display = 'block';
-        } else {
-            badge.style.display = 'none';
+        if (badge) {
+            if (naoLidas > 0) {
+                badge.textContent = naoLidas > 99 ? '99+' : naoLidas;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
         }
 
         DATA.condominios.forEach(condo => {
@@ -1380,13 +1394,15 @@ const app = {
 
     toggleNotifications() {
         const panel = document.getElementById('notifications-panel');
-        const estaAberto = panel.classList.contains('show');
+        if (panel) {
+            const estaAberto = panel.classList.contains('show');
 
-        if (!estaAberto) {
-            this.marcarTodasNotificacoesComoLidas();
+            if (!estaAberto) {
+                this.marcarTodasNotificacoesComoLidas();
+            }
+
+            panel.classList.toggle('show');
         }
-
-        panel.classList.toggle('show');
     },
 
     marcarTodasNotificacoesComoLidas() {
@@ -1444,6 +1460,8 @@ const app = {
         if (!ata) return;
 
         const modalContent = document.getElementById('comments-modal-content');
+        if (!modalContent) return;
+
         modalContent.innerHTML = `
             <h4><i class="fas fa-building"></i> ${ata.condo} - ${ata.data} ${ata.hora}</h4>
             <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--accent);">
@@ -1514,11 +1532,16 @@ const app = {
     },
 
     closeCommentsModal() {
-        document.getElementById('comments-modal').classList.remove('show');
+        const modal = document.getElementById('comments-modal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
     },
 
     renderFixas() {
         const list = document.getElementById('fixas-lista');
+        if (!list) return;
+
         const atas = JSON.parse(localStorage.getItem('porter_atas') || '[]');
         const fixas = atas.filter(a => a.fixa);
 
@@ -1573,11 +1596,11 @@ const app = {
     },
 
     saveOS() {
-        const condo = document.getElementById('os-condo').value;
-        const desc = document.getElementById('os-desc').value.trim();
-        const gravidade = document.getElementById('os-gravidade').value;
-        const data = document.getElementById('os-data').value;
-        const emailsInput = document.getElementById('os-emails').value;
+        const condo = document.getElementById('os-condo')?.value;
+        const desc = document.getElementById('os-desc')?.value.trim();
+        const gravidade = document.getElementById('os-gravidade')?.value;
+        const data = document.getElementById('os-data')?.value;
+        const emailsInput = document.getElementById('os-emails')?.value || '';
 
         if (!condo || !desc || !data) {
             alert('Preencha todos os campos obrigatórios! (Condomínio, Descrição e Data)');
@@ -1595,7 +1618,7 @@ const app = {
         const novaOS = {
             id: Date.now(),
             condo,
-            cidade: document.getElementById('os-cidade').value,
+            cidade: document.getElementById('os-cidade')?.value || '',
             gravidade: gravidade,
             desc,
             dataOS: data,
@@ -1807,6 +1830,7 @@ E-mail automático - Não responda
 
     renderOSList(osList, titulo = '') {
         const list = document.getElementById('os-lista');
+        if (!list) return;
 
         if (osList.length === 0) {
             list.innerHTML = `
@@ -2005,18 +2029,24 @@ E-mail automático - Não responda
     },
 
     openReportModal() {
-        document.getElementById('report-modal').classList.add('show');
+        const modal = document.getElementById('report-modal');
+        if (modal) {
+            modal.classList.add('show');
+        }
     },
 
     closeReportModal() {
-        document.getElementById('report-modal').classList.remove('show');
+        const modal = document.getElementById('report-modal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
     },
 
     generatePDF() {
-        const condo = document.getElementById('report-condo').value;
-        const dataInicio = document.getElementById('report-data-inicio').value;
-        const dataFim = document.getElementById('report-data-fim').value;
-        const tipo = document.getElementById('report-tipo').value;
+        const condo = document.getElementById('report-condo')?.value || '';
+        const dataInicio = document.getElementById('report-data-inicio')?.value || '';
+        const dataFim = document.getElementById('report-data-fim')?.value || '';
+        const tipo = document.getElementById('report-tipo')?.value || '';
 
         let dados = [];
         let titulo = '';
@@ -2074,6 +2104,11 @@ E-mail automático - Não responda
         }
 
         const { jsPDF } = window.jspdf;
+        if (!jsPDF) {
+            alert('Biblioteca jsPDF não carregada!');
+            return;
+        }
+
         const doc = new jsPDF();
 
         // Cabeçalho
@@ -2167,6 +2202,8 @@ E-mail automático - Não responda
     renderAta() {
         const list = document.getElementById('ata-lista');
         const info = document.getElementById('resultados-info-ata');
+        if (!list) return;
+
         let atas = JSON.parse(localStorage.getItem('porter_atas') || '[]');
 
         atas = atas.filter(a => !a.fixa);
@@ -2192,16 +2229,19 @@ E-mail automático - Não responda
         }
 
         const totalAtas = JSON.parse(localStorage.getItem('porter_atas') || '[]').filter(a => !a.fixa).length;
-        info.innerHTML = `
-            <div class="active-filters">
-                <i class="fas fa-chart-bar"></i> 
-                Mostrando ${atas.length} de ${totalAtas} registros
-                ${this.filtrosAtas.condo ? `<span>Condomínio: ${this.filtrosAtas.condo}</span>` : ''}
-                ${this.filtrosAtas.dataInicio || this.filtrosAtas.dataFim ? `<span>Período: ${this.formatarDataBR(this.filtrosAtas.dataInicio)} a ${this.formatarDataBR(this.filtrosAtas.dataFim)}</span>` : ''}
-                ${this.filtrosAtas.tipo ? `<span>Tipo: ${this.filtrosAtas.tipo}</span>` : ''}
-                ${this.filtrosAtas.status ? `<span>Status: ${this.filtrosAtas.status}</span>` : ''}
-            </div>
-        `;
+        
+        if (info) {
+            info.innerHTML = `
+                <div class="active-filters">
+                    <i class="fas fa-chart-bar"></i> 
+                    Mostrando ${atas.length} de ${totalAtas} registros
+                    ${this.filtrosAtas.condo ? `<span>Condomínio: ${this.filtrosAtas.condo}</span>` : ''}
+                    ${this.filtrosAtas.dataInicio || this.filtrosAtas.dataFim ? `<span>Período: ${this.formatarDataBR(this.filtrosAtas.dataInicio)} a ${this.formatarDataBR(this.filtrosAtas.dataFim)}</span>` : ''}
+                    ${this.filtrosAtas.tipo ? `<span>Tipo: ${this.filtrosAtas.tipo}</span>` : ''}
+                    ${this.filtrosAtas.status ? `<span>Status: ${this.filtrosAtas.status}</span>` : ''}
+                </div>
+            `;
+        }
 
         if (atas.length === 0) {
             list.innerHTML = `
@@ -2257,6 +2297,8 @@ E-mail automático - Não responda
 
     renderPresenca() {
         const list = document.getElementById('presenca-lista');
+        if (!list) return;
+
         let presencas = JSON.parse(localStorage.getItem('porter_presencas') || '[]');
         let logoffs = JSON.parse(localStorage.getItem('porter_logoffs') || '[]');
 
@@ -2323,7 +2365,7 @@ E-mail automático - Não responda
 
     sendChatMessage() {
         const input = document.getElementById('chat-input');
-        const message = input.value.trim();
+        const message = input?.value.trim();
 
         if (!message) return;
         if (!this.currentUser) {
@@ -2332,6 +2374,8 @@ E-mail automático - Não responda
         }
 
         const sendBtn = document.getElementById('chat-send-btn');
+        if (!sendBtn) return;
+
         const originalHTML = sendBtn.innerHTML;
         sendBtn.innerHTML = '<div class="loading"></div>';
         sendBtn.disabled = true;
@@ -2358,7 +2402,7 @@ E-mail automático - Não responda
         localStorage.setItem('porter_chat', JSON.stringify(chat));
 
         this.criarNotificacaoChatComAcao(chatMessage);
-        input.value = '';
+        if (input) input.value = '';
 
         setTimeout(() => {
             sendBtn.innerHTML = originalHTML;
@@ -2371,10 +2415,15 @@ E-mail automático - Não responda
 
     loadChat() {
         const container = document.getElementById('chat-messages');
+        if (!container) return;
+
         const chat = JSON.parse(localStorage.getItem('porter_chat') || '[]');
 
         if (this.currentUser && this.currentUser.role === 'ADMIN') {
-            document.getElementById('chat-admin-controls').style.display = 'flex';
+            const adminControls = document.getElementById('chat-admin-controls');
+            if (adminControls) {
+                adminControls.style.display = 'flex';
+            }
         }
 
         if (chat.length === 0) {
@@ -2393,7 +2442,7 @@ E-mail automático - Não responda
         container.innerHTML = '';
 
         chatOrdenado.forEach(msg => {
-            const isSent = msg.sender === this.currentUser.nome;
+            const isSent = msg.sender === this.currentUser?.nome;
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${isSent ? 'sent' : 'received'}`;
             messageDiv.dataset.id = msg.id;
@@ -2492,7 +2541,7 @@ E-mail automático - Não responda
     },
 
     deleteChatMessage(id) {
-        if (this.currentUser.role !== 'ADMIN') {
+        if (!this.currentUser || this.currentUser.role !== 'ADMIN') {
             alert('Apenas administradores podem excluir mensagens.');
             return;
         }
@@ -2507,7 +2556,7 @@ E-mail automático - Não responda
     },
 
     clearChat() {
-        if (this.currentUser.role !== 'ADMIN') {
+        if (!this.currentUser || this.currentUser.role !== 'ADMIN') {
             alert('Apenas administradores podem limpar o chat.');
             return;
         }
@@ -2522,6 +2571,7 @@ E-mail automático - Não responda
 
     openAdminPanel() {
         const modalContent = document.getElementById('admin-modal-content');
+        if (!modalContent) return;
 
         const sessions = JSON.parse(localStorage.getItem('porter_last_session') ? 
             [JSON.parse(localStorage.getItem('porter_last_session'))] : []);
@@ -2575,7 +2625,10 @@ E-mail automático - Não responda
     },
 
     closeAdminModal() {
-        document.getElementById('admin-modal').classList.remove('show');
+        const modal = document.getElementById('admin-modal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
     },
 
     renderHistoricoRemocoes() {
@@ -2709,5 +2762,4 @@ E-mail automático - Não responda
 // Inicializar o sistema
 window.onload = () => {
     app.init();
-
 };
