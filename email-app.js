@@ -336,5 +336,4 @@ ${condominioInfo}${userInfo}
             app.updateNotificationBadges();
         }
     }
-
 };
