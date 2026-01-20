@@ -212,6 +212,66 @@ class PresenceManager {
     isUserOnline(userId) {
         return this.onlineUsers[userId] && this.onlineUsers[userId].online === true;
     }
+    
+    // Método para abrir o modal de usuários online
+    openOnlineModal() {
+        this.showFullList();
+        const modal = document.getElementById('online-users-modal');
+        if (modal) {
+            modal.classList.add('show');
+        }
+    }
+
+    // Método para mostrar lista completa no modal
+    showFullList() {
+        const users = this.getOnlineUsers();
+        const listElement = document.getElementById('online-users-full-list');
+        const totalElement = document.getElementById('online-total');
+        const diurnoElement = document.getElementById('online-diurno');
+        const noturnoElement = document.getElementById('online-noturno');
+        
+        if (!listElement) return;
+        
+        // Atualiza estatísticas
+        if (totalElement) {
+            totalElement.textContent = users.length;
+        }
+        
+        if (diurnoElement) {
+            const diurnoCount = users.filter(user => user.turno === 'Diurno').length;
+            diurnoElement.textContent = diurnoCount;
+        }
+        
+        if (noturnoElement) {
+            const noturnoCount = users.filter(user => user.turno === 'Noturno').length;
+            noturnoElement.textContent = noturnoCount;
+        }
+        
+        // Atualiza lista
+        if (users.length === 0) {
+            listElement.innerHTML = `
+                <div class="no-users-online">
+                    <i class="fas fa-users" style="font-size: 3rem; color: #ddd; margin-bottom: 15px;"></i>
+                    <h4>Nenhum operador online</h4>
+                    <p style="color: #666; font-size: 0.9rem;">Você está sozinho no momento</p>
+                </div>
+            `;
+            return;
+        }
+        
+        listElement.innerHTML = users.map(user => `
+            <div class="online-user-card">
+                <div class="online-user-avatar">
+                    ${user.name.charAt(0).toUpperCase()}
+                </div>
+                <div class="online-user-name">${user.name}</div>
+                <div class="online-user-turno">${user.turno}</div>
+                <div style="font-size: 0.7rem; color: #27ae60; margin-top: 5px;">
+                    <i class="fas fa-circle"></i> Online
+                </div>
+            </div>
+        `).join('');
+    }
 }
 
 // Instância global
