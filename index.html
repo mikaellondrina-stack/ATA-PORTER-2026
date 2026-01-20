@@ -78,7 +78,7 @@
 
         <div style="display: flex; align-items: center; gap: 15px;">
             <!-- OPERADORES ONLINE -->
-            <div id="online-users" class="online-users-dropdown">
+            <div id="online-users" class="online-users-dropdown" onclick="presenceManager.openOnlineModal()">
                 <i class="fas fa-users" style="color: white;"></i>
                 <span style="font-size: 0.9rem;">
                     <span id="online-count">0</span> online
@@ -615,6 +615,40 @@
     </div>
     <div id="comments-modal-content"></div>
   </div>
+</div>
+
+<!-- MODAL DE USUÁRIOS ONLINE (NOVO - ADICIONADO APENAS ISSO) -->
+<div class="modal" id="online-users-modal">
+    <div class="modal-content">
+        <div class="online-users-modal-header">
+            <h3><i class="fas fa-users"></i> Operadores Online</h3>
+            <div class="online-users-stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="online-total">0</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="online-diurno">0</span>
+                    <span class="stat-label">Diurno</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="online-noturno">0</span>
+                    <span class="stat-label">Noturno</span>
+                </div>
+            </div>
+        </div>
+        <div id="online-users-full-list" class="online-user-grid">
+            <!-- Lista completa será gerada aqui -->
+        </div>
+        <div class="modal-footer" style="margin-top: 20px; text-align: center;">
+            <button class="btn btn-primary" onclick="presenceManager.showFullList()">
+                <i class="fas fa-sync-alt"></i> Atualizar Lista
+            </button>
+            <button class="btn btn-clear" onclick="app.closeModal('online-users-modal')">
+                Fechar
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- ========== SCRIPTS (ORDEM CORRETA) ========== -->
