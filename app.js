@@ -1,4 +1,4 @@
-// Sistema principal - Removido código de presença duplicado
+// Sistema principal
 const app = {
     currentUser: null,
     selectedMood: null,
@@ -7,6 +7,9 @@ const app = {
     lastLogoffTime: null,
     chatInterval: null,
     moodInterval: null,
+    onlineInterval: null,
+    onlineUsers: [],
+    onlineListenerSetup: false,
     
     init() {
         // GARANTIR que começa na tela de login
@@ -144,6 +147,7 @@ const app = {
         setInterval(() => {
             if (this.currentUser) {
                 this.salvarSessao();
+                this.atualizarPresencaOnline();
             }
         }, 30000);
     },
@@ -161,6 +165,25 @@ const app = {
         });
     },
     
+    setupOnlineTracking() {
+        if (!this.currentUser) return;
+        
+        // Verificar se Firebase está disponível
+        if (typeof firebase === 'undefined' || !firebase.database) {
+            console.warn('Firebase não disponível. Usando localStorage para usuários online.');
+            this.updateOnlineUsers();
+            return;
+        }
+        
+        // Inicializar com Firebase
+        this.atualizarPresencaOnline();
+        
+        // Atualizar a cada 30 segundos
+        this.onlineInterval = setInterval(() => {
+            this.atualizarPresencaOnline();
+        }, 30000);
+    },
+    
     getMoodStatusTexto(mood) {
         const statusMap = {
             '😠': 'Zangado hoje',
@@ -170,6 +193,270 @@ const app = {
             '😄': 'Radiante hoje'
         };
         return statusMap[mood] || 'Não avaliado';
+    },
+    
+    atualizarPresencaOnline() {
+        if (!this.currentUser) return;
+        
+        try {
+            // Verificar se Firebase está disponível
+            if (typeof firebase === 'undefined' || !firebase.database) {
+                this.updateOnlineUsersLocal();
+                return;
+            }
+            
+            const db = firebase.database();
+            const userRef = db.ref('online_users/' + this.currentUser.user);
+            
+            // Salvar dados do usuário
+            userRef.set({
+                nome: this.currentUser.nome,
+                role: this.currentUser.role,
+                turno: this.currentUser.turno,
+                lastActivity: firebase.database.ServerValue.TIMESTAMP,
+                mood: this.getMoodAtual(),
+                moodStatus: this.getMoodStatusTexto(this.getMoodAtual()),
+                isOnline: true
+            });
+            
+            // Remover quando sair
+            userRef.onDisconnect().remove();
+            
+            // Ouvir outros usuários (apenas uma vez)
+            if (!this.onlineListenerSetup) {
+                this.ouvirUsuariosOnline();
+                this.onlineListenerSetup = true;
+            }
+            
+        } catch (error) {
+            console.error('Erro ao atualizar presença online:', error);
+            this.updateOnlineUsersLocal();
+        }
+    },
+    
+    ouvirUsuariosOnline() {
+        try {
+            if (typeof firebase === 'undefined' || !firebase.database) {
+                console.warn('Firebase não disponível para ouvir usuários online.');
+                return;
+            }
+            
+            const db = firebase.database();
+            const onlineUsersRef = db.ref('online_users');
+            
+            onlineUsersRef.on('value', (snapshot) => {
+                const usuariosOnline = [];
+                const data = snapshot.val();
+                
+                if (data) {
+                    Object.keys(data).forEach(userId => {
+                        const userData = data[userId];
+                        
+                        // Verificar se está online (últimos 2 minutos)
+                        const lastActivity = userData.lastActivity;
+                        const agora = Date.now();
+                        const diferencaMinutos = (agora - lastActivity) / (1000 * 60);
+                        
+                        if (diferencaMinutos < 2) {
+                            const usuarioCompleto = DATA.funcionarios.find(f => f.user === userId);
+                            
+                            if (usuarioCompleto) {
+                                usuariosOnline.push({
+                                    ...usuarioCompleto,
+                                    ...userData,
+                                    user: userId,
+                                    isCurrentUser: userId === this.currentUser?.user,
+                                    lastActivity: new Date(lastActivity).toISOString()
+                                });
+                            } else {
+                                // Usar dados do Firebase se não encontrar localmente
+                                usuariosOnline.push({
+                                    nome: userData.nome || userId,
+                                    role: userData.role || 'OPERADOR',
+                                    user: userId,
+                                    turno: userData.turno || 'Diurno',
+                                    mood: userData.mood || '😐',
+                                    moodStatus: userData.moodStatus || 'Online',
+                                    isCurrentUser: userId === this.currentUser?.user,
+                                    lastActivity: new Date(lastActivity).toISOString()
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                this.onlineUsers = usuariosOnline;
+                this.updateOnlineUsers();
+                
+            }, (error) => {
+                console.error('Erro ao ouvir usuários online:', error);
+                this.updateOnlineUsersLocal();
+            });
+            
+        } catch (error) {
+            console.error('Erro ao configurar listener:', error);
+            this.updateOnlineUsersLocal();
+        }
+    },
+    
+    updateOnlineUsers() {
+        if (!this.currentUser) return;
+        
+        // Atualizar contador
+        const onlineCount = document.getElementById('online-count');
+        if (onlineCount) {
+            if (this.onlineUsers.length === 0) {
+                onlineCount.textContent = '0';
+                onlineCount.style.color = '#e74c3c';
+            } else if (this.onlineUsers.length === 1) {
+                onlineCount.textContent = '1 (apenas você)';
+                onlineCount.style.color = '#f39c12';
+            } else {
+                onlineCount.textContent = this.onlineUsers.length;
+                onlineCount.style.color = '#2ecc71';
+            }
+        }
+        
+        // Se a lista estiver visível, atualizar
+        const onlineList = document.getElementById('online-users-list');
+        if (onlineList && onlineList.style.display === 'block') {
+            this.renderOnlineUsersList();
+        }
+    },
+    
+    updateOnlineUsersLocal() {
+        if (!this.currentUser) return;
+        
+        const agora = new Date();
+        let usuariosOnline = [];
+        
+        // Adicionar usuário atual
+        const moodAtual = this.getMoodAtual();
+        const statusMood = this.getMoodStatusTexto(moodAtual);
+        
+        usuariosOnline.push({
+            ...this.currentUser,
+            lastActivity: agora.toISOString(),
+            mood: moodAtual,
+            moodStatus: statusMood,
+            isCurrentUser: true
+        });
+        
+        // Tentar obter usuários de outras sessões
+        try {
+            const sessaoSalva = localStorage.getItem('porter_last_session');
+            if (sessaoSalva) {
+                const sessao = JSON.parse(sessaoSalva);
+                if (sessao.user !== this.currentUser.user) {
+                    const tempoSessao = new Date(sessao.lastActivity);
+                    const diferencaMinutos = (agora - tempoSessao) / (1000 * 60);
+                    
+                    if (diferencaMinutos < 5) {
+                        const outroUsuario = DATA.funcionarios.find(f => f.user === sessao.user);
+                        if (outroUsuario) {
+                            usuariosOnline.push({
+                                ...outroUsuario,
+                                lastActivity: sessao.lastActivity,
+                                mood: '😐',
+                                moodStatus: 'Online há ' + Math.floor(diferencaMinutos) + ' min',
+                                isCurrentUser: false,
+                                turno: sessao.turno || 'Diurno'
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('Erro ao buscar sessões:', e);
+        }
+        
+        this.onlineUsers = usuariosOnline;
+        this.updateOnlineUsers();
+    },
+    
+    renderOnlineUsersList() {
+        const list = document.getElementById('online-users-list');
+        if (!list) return;
+        
+        // Limpar lista anterior
+        list.innerHTML = '';
+        
+        if (this.onlineUsers.length === 0) {
+            list.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: #666;">
+                    <i class="fas fa-user-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Nenhum operador online</p>
+                    <small style="font-size: 0.8rem;">Você está conectado, mas não há outros operadores ativos.</small>
+                </div>
+            `;
+            return;
+        }
+        
+        // Ordenar: admin primeiro, depois por nome
+        const usuariosOrdenados = [...this.onlineUsers].sort((a, b) => {
+            if (a.role === 'ADMIN' && b.role !== 'ADMIN') return -1;
+            if (b.role === 'ADMIN' && a.role !== 'ADMIN') return 1;
+            if (a.isCurrentUser && !b.isCurrentUser) return -1;
+            if (!a.isCurrentUser && b.isCurrentUser) return 1;
+            return a.nome.localeCompare(b.nome);
+        });
+        
+        usuariosOrdenados.forEach(user => {
+            const userItem = document.createElement('div');
+            userItem.className = 'online-user-item';
+            
+            // Calcular tempo desde última atividade
+            const tempoAtivo = user.lastActivity ? 
+                this.formatarTempoAtivo(new Date(user.lastActivity)) : 
+                'Agora mesmo';
+            
+            // Definir cor do status baseado no humor
+            const statusColor = this.getCorPorMood(user.mood);
+            
+            userItem.innerHTML = `
+                <div class="online-user-avatar" style="background: ${statusColor}; color: ${user.mood === '😐' ? '#333' : 'white'};">
+                    ${user.mood || '😐'}
+                </div>
+                <div class="online-user-info">
+                    <div class="online-user-name">
+                        ${user.nome.split(' ')[0]}
+                        ${user.role === 'ADMIN' ? ' 👑' : ''}
+                        ${user.isCurrentUser ? '<span style="color: #3498db; font-size: 0.8rem;"> (Você)</span>' : ''}
+                    </div>
+                    <div class="online-user-role">
+                        ${user.moodStatus || 'Online'}
+                        <div style="font-size: 0.7rem; color: #888; margin-top: 2px;">
+                            <i class="far fa-clock"></i> ${tempoAtivo}
+                        </div>
+                    </div>
+                </div>
+                <div class="online-status" style="background: ${user.isCurrentUser ? '#3498db' : '#2ecc71'};"></div>
+            `;
+            
+            list.appendChild(userItem);
+        });
+        
+        // Adicionar rodapé
+        const rodape = document.createElement('div');
+        rodape.style.cssText = `
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            border-top: 1px solid #eee;
+            background: #f8f9fa;
+            border-radius: 0 0 10px 10px;
+        `;
+        rodape.innerHTML = `
+            <i class="fas fa-users"></i> 
+            ${this.onlineUsers.length} operador${this.onlineUsers.length > 1 ? 'es' : ''} online
+            <br>
+            <small style="font-size: 0.7rem; color: #999;">
+                Atualizado: ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+            </small>
+        `;
+        
+        list.appendChild(rodape);
     },
     
     toggleOnlineUsers() {
@@ -184,6 +471,13 @@ const app = {
         if (estaVisivel) {
             list.style.display = 'none';
         } else {
+            // Atualizar lista ANTES de mostrar
+            if (typeof firebase !== 'undefined' && firebase.database) {
+                this.atualizarPresencaOnline();
+            } else {
+                this.updateOnlineUsersLocal();
+            }
+            
             // Posicionar corretamente
             const dropdown = document.getElementById('online-users');
             if (dropdown) {
@@ -198,8 +492,9 @@ const app = {
             list.style.zIndex = '10000';
             
             // Garantir que o conteúdo será renderizado
-            // O listener de usuários online está em presence.js
-            // A lista será atualizada automaticamente quando os dados mudarem
+            setTimeout(() => {
+                this.renderOnlineUsersList();
+            }, 100);
         }
     },
     
@@ -253,6 +548,17 @@ const app = {
         this.lastLogoffTime = new Date().toISOString();
         localStorage.setItem('porter_last_logoff', this.lastLogoffTime);
         
+        // Remover do Firebase se estiver disponível
+        if (typeof firebase !== 'undefined' && firebase.database) {
+            try {
+                const db = firebase.database();
+                const userRef = db.ref('online_users/' + this.currentUser.user);
+                userRef.remove();
+            } catch (error) {
+                console.error('Erro ao remover do Firebase:', error);
+            }
+        }
+        
         // Limpar intervalos
         if (this.chatInterval) {
             clearInterval(this.chatInterval);
@@ -263,6 +569,14 @@ const app = {
             clearInterval(this.moodInterval);
             this.moodInterval = null;
         }
+        
+        if (this.onlineInterval) {
+            clearInterval(this.onlineInterval);
+            this.onlineInterval = null;
+        }
+        
+        // Resetar listener do Firebase
+        this.onlineListenerSetup = false;
         
         // Limpar sessão do usuário atual
         localStorage.removeItem('porter_last_session');
@@ -435,6 +749,9 @@ const app = {
         
         document.getElementById('mood-submit-btn').disabled = true;
         
+        // Atualizar lista de online
+        this.updateOnlineUsers();
+        
         // Atualizar a área do usuário
         this.updateUserInfo();
         
@@ -542,6 +859,12 @@ const app = {
         this.updateNotificationBadges();
         this.salvarSessao();
         
+        // 🆕 ATUALIZAR OPERADORES ONLINE IMEDIATAMENTE
+        this.updateOnlineUsers();
+        
+        // CORREÇÃO CRÍTICA: Iniciar o tracking de online
+        this.setupOnlineTracking();
+        
         // Se for admin, mostrar controles
         if (this.currentUser.role === 'ADMIN') {
             document.getElementById('admin-controls').style.display = 'flex';
@@ -600,9 +923,18 @@ const app = {
                 this.moodInterval = null;
             }
             
+            if (this.onlineInterval) {
+                clearInterval(this.onlineInterval);
+                this.onlineInterval = null;
+            }
+            
             // Limpar sessão
             localStorage.removeItem('porter_session');
             localStorage.removeItem('porter_last_session');
+            
+            // Resetar lista de online
+            this.onlineUsers = [];
+            this.updateOnlineUsers();
             
             this.currentUser = null;
             
