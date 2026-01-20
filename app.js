@@ -1,4 +1,4 @@
-// Sistema principal
+// Sistema principal - Removido código de presença duplicado
 const app = {
     currentUser: null,
     selectedMood: null,
@@ -7,8 +7,6 @@ const app = {
     lastLogoffTime: null,
     chatInterval: null,
     moodInterval: null,
-    onlineInterval: null,
-    onlineUsers: [],
     
     init() {
         // GARANTIR que começa na tela de login
@@ -71,6 +69,47 @@ const app = {
                 emailApp.init();
             }
         }, 500);
+        
+        // Verificar se há sessão salva
+        this.verificarSessaoSalva();
+    },
+    
+    verificarSessaoSalva() {
+        const sessaoSalva = localStorage.getItem('porter_session');
+        if (sessaoSalva) {
+            try {
+                const userData = JSON.parse(sessaoSalva);
+                const user = DATA.funcionarios.find(f => f.user === userData.user);
+                
+                if (user) {
+                    // Verificar se a sessão ainda é válida (últimas 12 horas)
+                    const sessaoTimestamp = new Date(userData.loginTimestamp);
+                    const agora = new Date();
+                    const diferencaHoras = (agora - sessaoTimestamp) / (1000 * 60 * 60);
+                    
+                    if (diferencaHoras < 12) {
+                        // Sessão válida, fazer login automático
+                        this.currentUser = {
+                            ...user,
+                            turno: userData.turno || 'Diurno',
+                            loginTime: userData.loginTime,
+                            loginTimestamp: userData.loginTimestamp,
+                            loginDate: userData.loginDate,
+                            loginHour: userData.loginHour
+                        };
+                        this.showApp();
+                    } else {
+                        // Sessão expirada
+                        localStorage.removeItem('porter_session');
+                        localStorage.removeItem('porter_last_session');
+                    }
+                }
+            } catch (e) {
+                console.log('Erro ao carregar sessão:', e);
+                localStorage.removeItem('porter_session');
+                localStorage.removeItem('porter_last_session');
+            }
+        }
     },
     
     setupEventListeners() {
@@ -122,18 +161,6 @@ const app = {
         });
     },
     
-    setupOnlineTracking() {
-        // Atualizar a cada 30 segundos
-        this.onlineInterval = setInterval(() => {
-            if (this.currentUser) {
-                this.updateOnlineUsers();
-            }
-        }, 30000);
-        
-        // Inicializar imediatamente
-        this.updateOnlineUsers();
-    },
-    
     getMoodStatusTexto(mood) {
         const statusMap = {
             '😠': 'Zangado hoje',
@@ -145,166 +172,6 @@ const app = {
         return statusMap[mood] || 'Não avaliado';
     },
     
-    // 📋 FUNÇÃO ATUALIZADA: updateOnlineUsers CORRIGIDA - MOSTRA APENAS USUÁRIOS REAIS
-    updateOnlineUsers() {
-        if (!this.currentUser) return;
-        
-        const agora = new Date();
-        
-        // Buscar usuários realmente online do localStorage
-        let usuariosOnline = [];
-        
-        // Adicionar usuário atual
-        const moodAtual = this.getMoodAtual();
-        const statusMood = this.getMoodStatusTexto(moodAtual);
-        
-        usuariosOnline.push({
-            ...this.currentUser,
-            lastActivity: agora.toISOString(),
-            mood: moodAtual,
-            moodStatus: statusMood,
-            isCurrentUser: true
-        });
-        
-        // Verificar se há outros usuários com sessão ativa (últimos 5 minutos)
-        try {
-            const sessaoSalva = localStorage.getItem('porter_last_session');
-            if (sessaoSalva) {
-                const sessao = JSON.parse(sessaoSalva);
-                if (sessao.user !== this.currentUser.user) {
-                    const tempoSessao = new Date(sessao.lastActivity);
-                    const diferencaMinutos = (agora - tempoSessao) / (1000 * 60);
-                    
-                    if (diferencaMinutos < 5) {
-                        // Este é um usuário que está "online"
-                        const outroUsuario = DATA.funcionarios.find(f => f.user === sessao.user);
-                        if (outroUsuario) {
-                            usuariosOnline.push({
-                                ...outroUsuario,
-                                lastActivity: sessao.lastActivity,
-                                mood: '😐', // Mood padrão para usuários não ativos
-                                moodStatus: 'Online há ' + Math.floor(diferencaMinutos) + ' min',
-                                isCurrentUser: false,
-                                turno: sessao.turno || 'Diurno'
-                            });
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            console.log('Erro ao buscar sessões:', e);
-        }
-        
-        this.onlineUsers = usuariosOnline;
-        
-        // Atualizar contador
-        const onlineCount = document.getElementById('online-count');
-        if (onlineCount) {
-            if (this.onlineUsers.length === 1) {
-                onlineCount.textContent = '1 (apenas você)';
-                onlineCount.style.color = '#f39c12';
-            } else {
-                onlineCount.textContent = this.onlineUsers.length;
-                onlineCount.style.color = '#2ecc71';
-            }
-        }
-        
-        // Se a lista estiver visível, atualizar
-        const onlineList = document.getElementById('online-users-list');
-        if (onlineList && onlineList.style.display === 'block') {
-            this.renderOnlineUsersList();
-        }
-        
-        this.salvarSessao();
-    },
-    
-    // 📋 FUNÇÃO ATUALIZADA: renderOnlineUsersList CORRIGIDA
-    renderOnlineUsersList() {
-        const list = document.getElementById('online-users-list');
-        if (!list) return;
-        
-        // Limpar lista anterior
-        list.innerHTML = '';
-        
-        if (this.onlineUsers.length === 0) {
-            list.innerHTML = `
-                <div style="padding: 2rem; text-align: center; color: #666;">
-                    <i class="fas fa-user-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>Nenhum operador online</p>
-                    <small style="font-size: 0.8rem;">Você está conectado, mas não há outros operadores ativos.</small>
-                </div>
-            `;
-            return;
-        }
-        
-        // Ordenar: admin primeiro, depois por nome
-        const usuariosOrdenados = [...this.onlineUsers].sort((a, b) => {
-            if (a.role === 'ADMIN' && b.role !== 'ADMIN') return -1;
-            if (b.role === 'ADMIN' && a.role !== 'ADMIN') return 1;
-            if (a.isCurrentUser && !b.isCurrentUser) return -1;
-            if (!a.isCurrentUser && b.isCurrentUser) return 1;
-            return a.nome.localeCompare(b.nome);
-        });
-        
-        usuariosOrdenados.forEach(user => {
-            const userItem = document.createElement('div');
-            userItem.className = 'online-user-item';
-            
-            // Calcular tempo desde última atividade
-            const tempoAtivo = user.lastActivity ? 
-                this.formatarTempoAtivo(new Date(user.lastActivity)) : 
-                'Agora mesmo';
-            
-            // Definir cor do status baseado no humor
-            const statusColor = this.getCorPorMood(user.mood);
-            
-            userItem.innerHTML = `
-                <div class="online-user-avatar" style="background: ${statusColor}; color: ${user.mood === '😐' ? '#333' : 'white'};">
-                    ${user.mood || '😐'}
-                </div>
-                <div class="online-user-info">
-                    <div class="online-user-name">
-                        ${user.nome.split(' ')[0]}
-                        ${user.role === 'ADMIN' ? ' 👑' : ''}
-                        ${user.isCurrentUser ? '<span style="color: #3498db; font-size: 0.8rem;"> (Você)</span>' : ''}
-                    </div>
-                    <div class="online-user-role">
-                        ${user.moodStatus || 'Online'}
-                        <div style="font-size: 0.7rem; color: #888; margin-top: 2px;">
-                            <i class="far fa-clock"></i> ${tempoAtivo}
-                        </div>
-                    </div>
-                </div>
-                <div class="online-status" style="background: ${user.isCurrentUser ? '#3498db' : '#2ecc71'};"></div>
-            `;
-            
-            list.appendChild(userItem);
-        });
-        
-        // Adicionar rodapé
-        const rodape = document.createElement('div');
-        rodape.style.cssText = `
-            padding: 10px 15px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #666;
-            border-top: 1px solid #eee;
-            background: #f8f9fa;
-            border-radius: 0 0 10px 10px;
-        `;
-        rodape.innerHTML = `
-            <i class="fas fa-users"></i> 
-            ${this.onlineUsers.length} operador${this.onlineUsers.length > 1 ? 'es' : ''} online
-            <br>
-            <small style="font-size: 0.7rem; color: #999;">
-                Atualizado: ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-            </small>
-        `;
-        
-        list.appendChild(rodape);
-    },
-    
-    // 📋 FUNÇÃO ATUALIZADA: toggleOnlineUsers CORRIGIDA
     toggleOnlineUsers() {
         const list = document.getElementById('online-users-list');
         if (!list) return;
@@ -317,9 +184,6 @@ const app = {
         if (estaVisivel) {
             list.style.display = 'none';
         } else {
-            // Atualizar lista ANTES de mostrar
-            this.updateOnlineUsers();
-            
             // Posicionar corretamente
             const dropdown = document.getElementById('online-users');
             if (dropdown) {
@@ -334,7 +198,8 @@ const app = {
             list.style.zIndex = '10000';
             
             // Garantir que o conteúdo será renderizado
-            this.renderOnlineUsersList();
+            // O listener de usuários online está em presence.js
+            // A lista será atualizada automaticamente quando os dados mudarem
         }
     },
     
@@ -399,13 +264,9 @@ const app = {
             this.moodInterval = null;
         }
         
-        if (this.onlineInterval) {
-            clearInterval(this.onlineInterval);
-            this.onlineInterval = null;
-        }
-        
         // Limpar sessão do usuário atual
         localStorage.removeItem('porter_last_session');
+        localStorage.removeItem('porter_session');
     },
     
     salvarSessao() {
@@ -416,7 +277,8 @@ const app = {
             nome: this.currentUser.nome,
             lastActivity: new Date().toISOString(),
             turno: this.currentUser.turno,
-            role: this.currentUser.role
+            role: this.currentUser.role,
+            loginTimestamp: this.currentUser.loginTimestamp
         };
         
         localStorage.setItem('porter_last_session', JSON.stringify(sessionData));
@@ -573,9 +435,6 @@ const app = {
         
         document.getElementById('mood-submit-btn').disabled = true;
         
-        // Atualizar lista de online
-        this.updateOnlineUsers();
-        
         // Atualizar a área do usuário
         this.updateUserInfo();
         
@@ -683,9 +542,6 @@ const app = {
         this.updateNotificationBadges();
         this.salvarSessao();
         
-        // 🆕 ATUALIZAR OPERADORES ONLINE IMEDIATAMENTE
-        this.updateOnlineUsers();
-        
         // Se for admin, mostrar controles
         if (this.currentUser.role === 'ADMIN') {
             document.getElementById('admin-controls').style.display = 'flex';
@@ -695,11 +551,10 @@ const app = {
         this.loadChat();
         this.chatInterval = setInterval(() => this.loadChat(), 5000);
         
-        // Iniciar tracking de online
-        this.setupOnlineTracking();
-        
         // 🆕 Inicializar visto por
         this.registrarVisualizacaoChat();
+        
+        console.log('✅ Aplicação iniciada para:', this.currentUser.nome);
     },
     
     updateUserInfo() {
@@ -743,11 +598,6 @@ const app = {
             if (this.moodInterval) {
                 clearInterval(this.moodInterval);
                 this.moodInterval = null;
-            }
-            
-            if (this.onlineInterval) {
-                clearInterval(this.onlineInterval);
-                this.onlineInterval = null;
             }
             
             // Limpar sessão
