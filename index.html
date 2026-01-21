@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ata Operacional Porter - 2026</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- EmailJS para envio de e-mails reais -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
 
@@ -71,12 +80,12 @@
                 </div>
             </div>
         </div>
-
+        
         <!-- ÁREA DE INFORMAÇÕES DO USUÁRIO -->
         <div id="user-info">
             <!-- Será preenchido dinamicamente com informações do login -->
         </div>
-
+        
         <div style="display: flex; align-items: center; gap: 15px;">
             <!-- OPERADORES ONLINE -->
             <div id="online-users" class="online-users-dropdown">
@@ -87,7 +96,7 @@
                 <i class="fas fa-chevron-down" style="font-size: 0.8rem;"></i>
                 <div id="online-users-list" class="online-users-list"></div>
             </div>
-
+            
             <!-- Notificações -->
             <div class="notification-bell" onclick="app.toggleNotifications()">
                 <i class="fas fa-bell"></i>
@@ -100,24 +109,24 @@
                     <div id="notifications-list"></div>
                 </div>
             </div>
-
+            
             <!-- Botão Contato E-mail -->
             <button id="email-button" class="btn btn-success">
                 <i class="fas fa-envelope"></i> Contato
             </button>
-
+            
             <!-- Botão Relatório -->
             <button class="btn btn-success" onclick="app.openReportModal()">
                 <i class="fas fa-file-pdf"></i> Relatório
             </button>
-
+            
             <!-- Botão Admin (apenas para admin) -->
             <div id="admin-controls" class="admin-controls" style="display: none;">
                 <button class="btn btn-warning" onclick="app.openAdminPanel()">
                     <i class="fas fa-user-shield"></i> Admin
                 </button>
             </div>
-
+            
             <!-- Botão Sair -->
             <button class="btn btn-accent" onclick="app.logout()">
                 <i class="fas fa-sign-out-alt"></i> Sair
@@ -157,21 +166,21 @@
             <div class="mood-subtitle">
                 Selecione a expressão que melhor representa seu estado emocional atual
             </div>
-
+            
             <div class="mood-options" id="mood-options">
                 <!-- As opções serão geradas via JavaScript -->
             </div>
-
+            
             <div class="mood-status" id="mood-status">
                 <i class="fas fa-mouse-pointer"></i> Clique em uma expressão para selecionar
             </div>
-
+            
             <div class="mood-submit">
                 <button class="btn btn-primary" onclick="app.enviarMood()" id="mood-submit-btn" disabled>
                     <i class="fas fa-paper-plane"></i> Enviar Meu Sentimento
                 </button>
             </div>
-
+            
             <div id="mood-result" class="mood-result hidden"></div>
         </div>
 
@@ -285,7 +294,7 @@
                     <i class="fas fa-info-circle"></i> Estas são informações importantes que permanecem visíveis para todos os operadores.
                 </p>
             </div>
-
+            
             <div id="fixas-lista"></div>
         </div>
 
@@ -333,7 +342,7 @@
                     <input type="text" id="os-emails" placeholder="tecnica@porter.com, sindico@condominio.com, adm@empresa.com">
                     <small style="font-size: 0.8rem; color: #666;">Separe múltiplos e-mails por vírgula</small>
                 </div>
-
+                
                 <!-- VISUALIZAÇÃO DA PRIORIDADE -->
                 <div id="os-preview-prioridade" style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px; display: none;">
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -347,7 +356,7 @@
                         <i class="fas fa-info-circle"></i> Esta OS será tratada com prioridade correspondente
                     </div>
                 </div>
-
+                
                 <button class="btn btn-info" onclick="app.saveOS()">
                     <i class="fas fa-paper-plane"></i> ENVIAR ORDEM DE SERVIÇO
                 </button>
@@ -376,7 +385,7 @@
                     </div>
                 </div>
             </div>
-
+            
             <!-- Lista de OS -->
             <div id="os-lista"></div>
         </div>
@@ -395,11 +404,11 @@
                         </button>
                     </div>
                 </div>
-
+                
                 <div class="chat-messages" id="chat-messages">
                     <!-- Mensagens serão carregadas aqui -->
                 </div>
-
+                
                 <div class="chat-input-area">
                     <textarea class="chat-input" id="chat-input" placeholder="Digite sua mensagem..." rows="2"></textarea>
                     <button class="btn btn-info" onclick="app.sendChatMessage()" id="chat-send-btn">
@@ -407,7 +416,7 @@
                     </button>
                 </div>
             </div>
-
+            
             <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--gray); text-align: center;">
                 <i class="fas fa-info-circle"></i> As mensagens são visíveis para todos os operadores logados
             </div>
@@ -485,22 +494,22 @@
                 <label><i class="fas fa-user"></i> Seu Nome</label>
                 <input type="text" id="email-sender-name" placeholder="Digite seu nome completo" required>
             </div>
-
+            
             <div class="form-group">
                 <label><i class="fas fa-building"></i> Condomínio (opcional)</label>
                 <input type="text" id="email-condominio" placeholder="Nome do condomínio relacionado">
             </div>
-
+            
             <div class="form-group">
                 <label><i class="fas fa-tag"></i> Assunto</label>
                 <input type="text" id="email-subject" placeholder="Assunto do e-mail" required>
             </div>
-
+            
             <div class="form-group">
                 <label><i class="fas fa-edit"></i> Mensagem</label>
                 <textarea id="email-message" rows="8" placeholder="Descreva detalhadamente o assunto..." required></textarea>
             </div>
-
+            
             <!-- Informação sobre destinatários -->
             <div style="margin: 1rem 0; padding: 1rem; background: #e8f4fc; border-radius: 8px;">
                 <i class="fas fa-info-circle"></i> <strong>Destinatários:</strong>
@@ -510,7 +519,7 @@
                     • londrina.tecnicaplantao1@porter.com.br
                 </div>
             </div>
-
+            
             <!-- CAPTCHA básico anti-spam -->
             <div class="captcha-container">
                 <div class="captcha-question" id="captcha-question">
@@ -521,10 +530,10 @@
                     <i class="fas fa-shield-alt"></i> Verificação de segurança
                 </small>
             </div>
-
+            
             <!-- Status do envio -->
             <div class="email-status" id="email-status"></div>
-
+            
             <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
                 <button class="btn btn-primary" onclick="emailApp.sendEmail()" id="email-send-btn">
                     <i class="fas fa-paper-plane"></i> Enviar E-mail
@@ -533,7 +542,7 @@
                     Cancelar
                 </button>
             </div>
-
+            
             <div style="margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; font-size: 0.9rem;">
                 <i class="fas fa-envelope"></i> 
                 <strong>Informação:</strong> Este e-mail será enviado diretamente do sistema Porter para a equipe técnica.
@@ -593,47 +602,37 @@
     </div>
 </div>
 
-<!-- MODAL DE CONTROLE ADMIN -->
-<div class="modal" id="admin-modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>
-        <i class="fas fa-user-shield"></i>
-        Controle Administrativo
-      </h3>
-      <button
-        class="modal-close"
-        onclick="app.closeAdminModal()"
-      >
-        &times;
-      </button>
+<!-- MODAL DE COMENTÁRIOS -->
+<div class="modal" id="comments-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-comments"></i> Comentários</h3>
+            <button class="modal-close" onclick="app.closeCommentsModal()">&times;</button>
+        </div>
+        <div id="comments-modal-content">
+            <!-- Conteúdo será carregado dinamicamente -->
+        </div>
     </div>
-
-    <div id="admin-modal-content">
-      <!-- Conteúdo será carregado dinamicamente -->
-    </div>
-  </div>
 </div>
 
-<!-- Bibliotecas externas -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<!-- MODAL DE CONTROLE ADMIN -->
+<div class="modal" id="admin-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-shield"></i> Controle Administrativo</h3>
+            <button class="modal-close" onclick="app.closeAdminModal()">&times;</button>
+        </div>
+        <div id="admin-modal-content">
+            <!-- Conteúdo será carregado dinamicamente -->
+        </div>
+    </div>
+</div>
 
-<!-- Firebase v8 (OBRIGATÓRIO) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-<!-- Inicialização Firebase -->
-<!-- Firebase -->
-<script src="firebase.js"></script>
-
-<!-- Presença online/offline -->
-<script src="presence.js"></script>
-
-<!-- Seus scripts -->
+<!-- JavaScript -->
 <script src="data.js"></script>
-<script src="email-app.js"></script>
+<script src="firebase.js"></script>
+<script src="presença.js"></script>
+<script src="aplicativo-de-email.js"></script>
 <script src="app.js"></script>
-
 </body>
+</html>
