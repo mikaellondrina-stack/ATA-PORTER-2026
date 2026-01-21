@@ -72,3 +72,16 @@ const DATA = {
         { n: "VIVALDI BOULEVARD", c: "Londrina" }, { n: "VIVENDA DOS PESCADORES", c: "Maringá" }
     ]
 };
+
+// Variáveis globais compartilhadas
+let currentUser = null;
+let selectedMood = null;
+let currentCondoFilter = '';
+let notifications = [];
+let lastLogoffTime = null;
+let chatInterval = null;
+let moodInterval = null;
+let onlineInterval = null;
+let onlineUsers = [];
+let filtrosAtas = { condo: '', dataInicio: '', dataFim: '', tipo: '', status: '' };
+let filtrosPresenca = { operador: '', dataInicio: '', dataFim: '', turno: '' };
