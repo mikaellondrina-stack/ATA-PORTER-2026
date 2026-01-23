@@ -67,8 +67,8 @@ const emailApp = {
         });
         
         // Preencher nome automaticamente se usuário estiver logado
-        if (currentUser) {
-            document.getElementById('email-sender-name').value = currentUser.nome;
+        if (app.currentUser) {
+            document.getElementById('email-sender-name').value = app.currentUser.nome;
         } else {
             document.getElementById('email-sender-name').value = '';
         }
@@ -174,9 +174,9 @@ const emailApp = {
         const message = document.getElementById('email-message').value.trim();
         
         // Obter informações adicionais
-        const userInfo = currentUser ? `
-Operador: ${currentUser.nome}
-Turno: ${currentUser.turno}
+        const userInfo = app.currentUser ? `
+Operador: ${app.currentUser.nome}
+Turno: ${app.currentUser.turno}
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
         ` : `
 Remetente: ${name}
@@ -247,7 +247,7 @@ ${condominioInfo}${userInfo}
                     from_email: this.EMAIL_CONFIG.FROM_EMAIL,
                     date: new Date().toLocaleString('pt-BR'),
                     status: 'sent_simulation',
-                    user: currentUser?.nome || 'Visitante'
+                    user: app.currentUser?.nome || 'Visitante'
                 });
                 
                 this.showStatus(`✅ E-mail registrado! (Modo simulação) Seria enviado para ${this.EMAIL_CONFIG.TO_EMAILS.length} destinatário(s).`, 'success');
@@ -278,7 +278,7 @@ ${condominioInfo}${userInfo}
                 date: new Date().toLocaleString('pt-BR'),
                 status: 'error',
                 error: error.message,
-                user: currentUser?.nome || 'Visitante'
+                user: app.currentUser?.nome || 'Visitante'
             });
             
             this.showStatus('❌ Erro ao enviar e-mail. Tente novamente ou contate o administrador.', 'error');
