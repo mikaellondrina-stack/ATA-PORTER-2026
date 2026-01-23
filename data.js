@@ -11,12 +11,10 @@ const DATA = {
         { nome: "EDSON SILVA MACÊDO", user: "edson.macedo", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "MARIA CLARA RAMOS", user: "maria.ramos", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "GABRIELY AMORIM CAMPOS", user: "gabriely.campos", pass: "Porter@2026", role: "OPERADOR" },
-        { nome: "SANDRA REGINA DA FRANÇA SILVA", user: "sandra.silva", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "THAIS BENA LIMA", user: "thais.lima", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "ABNER CAVALCANTE", user: "abner.cavalcante", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "DAIANE LUCY RODRIGUES DE ALMEIDA", user: "daiane.almeida", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "ALINY MELQUIADES DE SOUZA", user: "aliny.souza", pass: "Porter@2026", role: "OPERADOR" },
-        { nome: "LOUISE COSTA", user: "louise.costa", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "ROSALIA TAIT KLINKERFUS", user: "rosalia.klinkerfus", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "MARIO ALEXANDRE CLEMENTIN", user: "mario.clementin", pass: "Porter@2026", role: "OPERADOR" },
         { nome: "VANIA DO SOCORRO LEOCADIO", user: "vania.leocadio", pass: "Porter@2026", role: "OPERADOR" },
@@ -85,3 +83,4 @@ let onlineInterval = null;
 let onlineUsers = [];
 let filtrosAtas = { condo: '', dataInicio: '', dataFim: '', tipo: '', status: '' };
 let filtrosPresenca = { operador: '', dataInicio: '', dataFim: '', turno: '' };
+
